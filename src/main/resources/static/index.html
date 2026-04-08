@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UserApp - Spring Boot</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          "Segoe UI",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #333;
+      }
+      .card {
+        background: white;
+        border-radius: 16px;
+        padding: 48px;
+        max-width: 560px;
+        width: 90%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        text-align: center;
+      }
+      .icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+      }
+      h1 {
+        font-size: 28px;
+        color: #1a1a2e;
+        margin-bottom: 8px;
+      }
+      .subtitle {
+        font-size: 14px;
+        color: #888;
+        margin-bottom: 32px;
+      }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #e8f5e9;
+        color: #2e7d32;
+        padding: 10px 20px;
+        border-radius: 24px;
+        font-weight: 600;
+        font-size: 15px;
+        margin-bottom: 32px;
+      }
+      .status .dot {
+        width: 10px;
+        height: 10px;
+        background: #4caf50;
+        border-radius: 50%;
+        animation: pulse 1.5s infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+      .links {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 8px;
+      }
+      .links a {
+        display: block;
+        padding: 14px;
+        border-radius: 10px;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 15px;
+        transition:
+          transform 0.15s,
+          box-shadow 0.15s;
+      }
+      .links a:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      .link-users {
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+      .link-h2 {
+        background: #e3f2fd;
+        color: #1565c0;
+      }
+      .link-actuator {
+        background: #fff3e0;
+        color: #e65100;
+      }
+      .link-health {
+        background: #f3e5f5;
+        color: #7b1fa2;
+      }
+      footer {
+        margin-top: 32px;
+        font-size: 13px;
+        color: #aaa;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="icon">&#9889;</div>
+      <h1>UserApp</h1>
+      <p class="subtitle">Spring Boot + JPA + H2 &mdash; Demo DAW / DAM</p>
+
+      <div class="status">
+        <span class="dot"></span>
+        Spring Boot funcionando correctamente
+      </div>
+
+      <div class="links">
+        <a href="/users.html" class="link-users">
+          &#128100; Gestionar Usuarios (CRUD)
+        </a>
+        <a href="/h2-info.html" class="link-h2">
+          &#128450; Consola H2 Database
+        </a>
+        <a href="/actuator-info.html" class="link-actuator">
+          &#9881; Spring Boot Actuator
+        </a>
+        <a href="/health-info.html" class="link-health">
+          &#128154; Health Check
+        </a>
+      </div>
+
+      <footer>&copy; 2026 &mdash; Proyecto de ejemplo para el alumnado</footer>
+    </div>
+  </body>
+</html>

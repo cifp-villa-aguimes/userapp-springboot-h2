@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consola H2 - UserApp</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 48px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .icon { font-size: 56px; margin-bottom: 12px; }
+        h1 { font-size: 26px; color: #1565c0; margin-bottom: 6px; }
+        .subtitle { font-size: 14px; color: #888; }
+        .info-box {
+            background: #f5f7ff;
+            border: 1px solid #e0e7ff;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .info-box h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #1565c0;
+            margin-bottom: 16px;
+        }
+        .field {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e8ecf4;
+        }
+        .field:last-child { border-bottom: none; }
+        .field-label {
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+        .field-value {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #1a1a2e;
+            background: #e3f2fd;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        .tip {
+            background: #fff8e1;
+            border-left: 4px solid #ffc107;
+            border-radius: 0 8px 8px 0;
+            padding: 14px 18px;
+            font-size: 13px;
+            color: #6d5c00;
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+        .actions {
+            display: flex;
+            gap: 12px;
+        }
+        .btn {
+            flex: 1;
+            display: block;
+            text-align: center;
+            padding: 14px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 15px;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn-primary {
+            background: #1565c0;
+            color: white;
+        }
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="header">
+            <div class="icon">&#128450;</div>
+            <h1>Consola H2 Database</h1>
+            <p class="subtitle">Base de datos en memoria para desarrollo y pruebas</p>
+        </div>
+
+        <div class="info-box">
+            <h2>Datos de conexi&oacute;n</h2>
+            <div class="field">
+                <span class="field-label">JDBC URL</span>
+                <span class="field-value">jdbc:h2:mem:userappdb</span>
+            </div>
+            <div class="field">
+                <span class="field-label">Driver</span>
+                <span class="field-value">org.h2.Driver</span>
+            </div>
+            <div class="field">
+                <span class="field-label">Usuario</span>
+                <span class="field-value">sa</span>
+            </div>
+            <div class="field">
+                <span class="field-label">Contrase&ntilde;a</span>
+                <span class="field-value">(vac&iacute;a)</span>
+            </div>
+        </div>
+
+        <div class="tip">
+            <strong>&#128161; Consejo:</strong> Al abrir la consola H2, aseg&uacute;rate de que la JDBC URL sea exactamente
+            <code>jdbc:h2:mem:userappdb</code>. H2 pone por defecto otra URL que no apunta a nuestra base de datos.
+        </div>
+
+        <div class="actions">
+            <a href="/h2-console" class="btn btn-primary">Abrir Consola H2</a>
+            <a href="/" class="btn btn-secondary">&#8592; Volver</a>
+        </div>
+    </div>
+</body>
+</html>

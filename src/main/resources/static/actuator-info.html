@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actuator - UserApp</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #e65100 0%, #bf360c 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 48px;
+            max-width: 640px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .icon { font-size: 56px; margin-bottom: 12px; }
+        h1 { font-size: 26px; color: #e65100; margin-bottom: 6px; }
+        .subtitle { font-size: 14px; color: #888; }
+        .info-box {
+            background: #fff8f0;
+            border: 1px solid #ffe0c0;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .info-box h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #e65100;
+            margin-bottom: 16px;
+        }
+        .endpoint-list {
+            list-style: none;
+        }
+        .endpoint-list li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #ffecd6;
+        }
+        .endpoint-list li:last-child { border-bottom: none; }
+        .endpoint-badge {
+            background: #fff3e0;
+            color: #e65100;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+        .endpoint-desc {
+            font-size: 14px;
+            color: #555;
+        }
+        .loading {
+            text-align: center;
+            padding: 24px;
+            color: #999;
+            font-size: 14px;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ffd6a0;
+            border-top-color: #e65100;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .error-msg {
+            background: #ffebee;
+            color: #c62828;
+            padding: 14px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            text-align: center;
+        }
+        .tip {
+            background: #fff8e1;
+            border-left: 4px solid #ffc107;
+            border-radius: 0 8px 8px 0;
+            padding: 14px 18px;
+            font-size: 13px;
+            color: #6d5c00;
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+        .actions {
+            display: flex;
+            gap: 12px;
+        }
+        .btn {
+            flex: 1;
+            display: block;
+            text-align: center;
+            padding: 14px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 15px;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn-primary { background: #e65100; color: white; }
+        .btn-secondary { background: #f0f0f0; color: #555; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="header">
+            <div class="icon">&#9881;</div>
+            <h1>Spring Boot Actuator</h1>
+            <p class="subtitle">Endpoints de monitorizaci&oacute;n y gesti&oacute;n de la aplicaci&oacute;n</p>
+        </div>
+
+        <div class="info-box">
+            <h2>Endpoints disponibles</h2>
+            <div id="endpoints">
+                <div class="loading">
+                    <span class="spinner"></span> Cargando endpoints...
+                </div>
+            </div>
+        </div>
+
+        <div class="tip">
+            <strong>&#128161; Consejo:</strong> Por defecto, solo el endpoint <code>/health</code> est&aacute; expuesto.
+            Para exponer m&aacute;s endpoints, a&ntilde;ade en <code>application.properties</code>:<br>
+            <code>management.endpoints.web.exposure.include=*</code>
+        </div>
+
+        <div class="actions">
+            <a href="/actuator" class="btn btn-primary">Ver JSON crudo</a>
+            <a href="/" class="btn btn-secondary">&#8592; Volver</a>
+        </div>
+    </div>
+
+    <script>
+        const descriptions = {
+            health: 'Estado de salud de la aplicaci\u00f3n',
+            info: 'Informaci\u00f3n general del proyecto',
+            metrics: 'M\u00e9tricas del sistema (CPU, memoria, etc.)',
+            env: 'Variables de entorno y propiedades',
+            beans: 'Beans registrados en el contexto Spring',
+            mappings: 'Mapeo de rutas HTTP',
+            loggers: 'Configuraci\u00f3n de niveles de log',
+            conditions: 'Condiciones de auto-configuraci\u00f3n',
+            configprops: 'Propiedades de configuraci\u00f3n',
+            threaddump: 'Volcado de hilos activos',
+            heapdump: 'Volcado de memoria heap',
+            scheduledtasks: 'Tareas programadas',
+            caches: 'Cach\u00e9s de la aplicaci\u00f3n',
+            flyway: 'Migraciones de Flyway',
+            liquibase: 'Migraciones de Liquibase',
+            sessions: 'Sesiones HTTP activas',
+            shutdown: 'Apagar la aplicaci\u00f3n (POST)',
+            self: 'Enlace al propio Actuator'
+        };
+
+        fetch('/actuator')
+            .then(r => r.json())
+            .then(data => {
+                const container = document.getElementById('endpoints');
+                const links = data._links || {};
+                const keys = Object.keys(links).filter(k => k !== 'self');
+
+                if (keys.length === 0) {
+                    container.innerHTML = '<p style="text-align:center;color:#999;padding:12px;">No se encontraron endpoints expuestos.</p>';
+                    return;
+                }
+
+                let html = '<ul class="endpoint-list">';
+                keys.forEach(key => {
+                    const href = links[key].href;
+                    const path = new URL(href).pathname;
+                    const desc = descriptions[key] || 'Endpoint de Actuator';
+                    html += `<li>
+                        <a href="${path}" class="endpoint-badge">${path}</a>
+                        <span class="endpoint-desc">${desc}</span>
+                    </li>`;
+                });
+                html += '</ul>';
+                container.innerHTML = html;
+            })
+            .catch(() => {
+                document.getElementById('endpoints').innerHTML =
+                    '<div class="error-msg">No se pudo conectar con Actuator. Aseg\u00farate de que la app est\u00e1 en ejecuci\u00f3n.</div>';
+            });
+    </script>
+</body>
+</html>
