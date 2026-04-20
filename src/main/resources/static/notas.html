@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionar Notas - UserApp</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 40px 16px;
+            color: #333;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .header { text-align: center; margin-bottom: 32px; }
+        .icon { font-size: 56px; margin-bottom: 12px; }
+        h1 { font-size: 26px; color: #1a237e; margin-bottom: 6px; }
+        .subtitle { font-size: 14px; color: #888; }
+
+        /* Panel didactico */
+        .api-log {
+            background: #263238;
+            color: #9fa8da;
+            border-radius: 10px;
+            padding: 14px 18px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin-bottom: 24px;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+        }
+        .api-log .method {
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .method-GET { background: #1565c0; color: white; }
+        .method-POST { background: #2e7d32; color: white; }
+        .method-PUT { background: #e65100; color: white; }
+        .method-DELETE { background: #c62828; color: white; }
+        .api-log .status { color: #fdd835; margin-left: auto; white-space: nowrap; }
+        .api-log .url { color: #e0e0e0; }
+
+        /* Filtro por usuario */
+        .filter-section {
+            background: #e8eaf6;
+            border: 1px solid #c5cae9;
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .filter-section label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a237e;
+            white-space: nowrap;
+        }
+        .filter-section select {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 14px;
+            border: 2px solid #c5cae9;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            color: #333;
+            background: white;
+            cursor: pointer;
+        }
+        .filter-section select:focus {
+            outline: none;
+            border-color: #1a237e;
+        }
+
+        /* Formulario */
+        .form-section {
+            background: #e8eaf6;
+            border: 1px solid #c5cae9;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .form-section h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #1a237e;
+            margin-bottom: 16px;
+        }
+        .form-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .form-row input,
+        .form-row select,
+        .form-row textarea {
+            flex: 1;
+            min-width: 160px;
+            padding: 12px 16px;
+            border: 2px solid #c5cae9;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        .form-row textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .form-row input:focus,
+        .form-row select:focus,
+        .form-row textarea:focus {
+            outline: none;
+            border-color: #1a237e;
+        }
+        .form-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn-create { background: #1a237e; color: white; }
+        .btn-update { background: #e65100; color: white; }
+        .btn-cancel { background: #e0e0e0; color: #555; }
+
+        /* Tabla */
+        .table-section { margin-bottom: 24px; }
+        .table-section h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #1a237e;
+            margin-bottom: 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        thead th {
+            background: #f5f5f5;
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #777;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        tbody td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: middle;
+        }
+        tbody tr:hover { background: #f5f5ff; }
+        .actions-cell {
+            display: flex;
+            gap: 6px;
+        }
+        .btn-sm {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: transform 0.15s;
+        }
+        .btn-sm:hover { transform: translateY(-1px); }
+        .btn-edit { background: #fff3e0; color: #e65100; }
+        .btn-delete { background: #ffebee; color: #c62828; }
+        .empty-msg {
+            text-align: center;
+            padding: 32px;
+            color: #999;
+            font-size: 14px;
+        }
+        .usuario-badge {
+            background: #e8eaf6;
+            color: #1a237e;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Tip didactico */
+        .tip {
+            background: #fff8e1;
+            border-left: 4px solid #ffc107;
+            border-radius: 0 8px 8px 0;
+            padding: 14px 18px;
+            font-size: 13px;
+            color: #6d5c00;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .tip code {
+            background: #fff3cd;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        /* Acciones */
+        .bottom-actions {
+            display: flex;
+            gap: 12px;
+        }
+        .btn-nav {
+            flex: 1;
+            display: block;
+            text-align: center;
+            padding: 14px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 15px;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .btn-nav:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn-nav-primary { background: #1a237e; color: white; }
+        .btn-nav-secondary { background: #f0f0f0; color: #555; }
+
+        /* Notificacion */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        .toast.show { transform: translateX(0); }
+        .toast-success { background: #1a237e; }
+        .toast-error { background: #c62828; }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .card { padding: 24px; }
+            .form-row { flex-direction: column; }
+            .actions-cell { flex-direction: column; }
+            table { font-size: 13px; }
+            thead th, tbody td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="header">
+            <div class="icon">&#128221;</div>
+            <h1>Gesti&oacute;n de Notas</h1>
+            <p class="subtitle">Relaci&oacute;n <code>@ManyToOne</code> en acci&oacute;n &mdash; <code>/api/v1/notas</code></p>
+        </div>
+
+        <!-- Panel didactico: muestra la ultima peticion HTTP realizada -->
+        <div class="api-log" id="apiLog">
+            <span style="color:#78909c;">Realiza una acci&oacute;n para ver la petici&oacute;n HTTP aqu&iacute;...</span>
+        </div>
+
+        <!-- Filtro por usuario -->
+        <div class="filter-section">
+            <label for="filtroUsuario">&#128269; Filtrar por usuario:</label>
+            <select id="filtroUsuario" onchange="filtrarPorUsuario()">
+                <option value="">Todas las notas</option>
+            </select>
+        </div>
+
+        <!-- Formulario para crear / editar -->
+        <div class="form-section">
+            <h2 id="formTitle">Crear nueva nota</h2>
+            <div class="form-row">
+                <input type="text" id="inputTitulo" placeholder="T&iacute;tulo">
+            </div>
+            <div class="form-row">
+                <textarea id="inputContenido" placeholder="Contenido de la nota..."></textarea>
+            </div>
+            <div class="form-row">
+                <select id="inputUsuario">
+                    <option value="">-- Selecciona un usuario --</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-create" id="btnSubmit" onclick="handleSubmit()">Crear nota</button>
+                <button class="btn btn-cancel" id="btnCancel" onclick="cancelEdit()" style="display:none;">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- Tabla de notas -->
+        <div class="table-section">
+            <h2>Notas en la base de datos H2</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>T&iacute;tulo</th>
+                        <th>Contenido</th>
+                        <th>Usuario</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="notasBody">
+                    <tr><td colspan="5" class="empty-msg">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Tip didactico -->
+        <div class="tip">
+            <strong>&#128161; Relaci&oacute;n <code>@ManyToOne</code> en acci&oacute;n</strong><br>
+            Cada nota tiene una columna <code>USUARIO_ID</code> que apunta a la tabla <code>USERS</code>.
+            Eso es exactamente lo que configura <code>@ManyToOne + @JoinColumn(name = "usuario_id")</code> en Java.<br>
+            Al seleccionar un usuario en el filtro, la API ejecuta:<br>
+            <strong>GET /api/v1/notas/usuario/{id}</strong> &rarr; <code>SELECT * FROM notas WHERE usuario_id = ?</code><br>
+            Compru&eacute;balo en <a href="/h2-console" target="_blank" style="color:#1a237e;">la consola H2</a>:
+            ver&aacute;s la tabla <code>NOTAS</code> con la FK <code>USUARIO_ID</code>.
+        </div>
+
+        <div class="bottom-actions">
+            <a href="/api/v1/notas" class="btn-nav btn-nav-primary">Ver JSON crudo</a>
+            <a href="/" class="btn-nav btn-nav-secondary">&#8592; Volver</a>
+        </div>
+    </div>
+
+    <!-- Toast de notificaciones -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // URLs base de las APIs REST
+        const API_NOTAS = '/api/v1/notas';
+        const API_USERS = '/api/v1/users';
+
+        // Estado: si estamos editando, guardamos el id
+        let editingId = null;
+
+        // Mapa de usuarios para mostrar el nombre en la tabla (id → nombre)
+        let usuariosMap = {};
+
+        // ─── Inicializar la pagina ───
+        document.addEventListener('DOMContentLoaded', () => {
+            cargarUsuarios().then(() => loadNotas());
+        });
+
+        // ─── Cargar usuarios en los selects y en el mapa ───
+        function cargarUsuarios() {
+            return fetch(API_USERS)
+                .then(response => response.json())
+                .then(users => {
+                    // Guardar en el mapa para usar en la tabla
+                    usuariosMap = {};
+                    users.forEach(u => { usuariosMap[u.id] = u.nombre; });
+
+                    // Poblar el select del formulario
+                    const selectForm = document.getElementById('inputUsuario');
+                    const currentVal = selectForm.value;
+                    selectForm.innerHTML = '<option value="">-- Selecciona un usuario --</option>';
+                    users.forEach(u => {
+                        const opt = document.createElement('option');
+                        opt.value = u.id;
+                        opt.textContent = `#${u.id} — ${u.nombre}`;
+                        selectForm.appendChild(opt);
+                    });
+                    if (currentVal) selectForm.value = currentVal;
+
+                    // Poblar el select del filtro
+                    const selectFiltro = document.getElementById('filtroUsuario');
+                    const filtroVal = selectFiltro.value;
+                    selectFiltro.innerHTML = '<option value="">Todas las notas</option>';
+                    users.forEach(u => {
+                        const opt = document.createElement('option');
+                        opt.value = u.id;
+                        opt.textContent = `${u.nombre}`;
+                        selectFiltro.appendChild(opt);
+                    });
+                    if (filtroVal) selectFiltro.value = filtroVal;
+                })
+                .catch(() => {
+                    // Si no hay usuarios disponibles seguimos funcionando
+                });
+        }
+
+        // ─── Funcion principal: listar todas las notas (o filtradas) ───
+        function loadNotas() {
+            const usuarioId = document.getElementById('filtroUsuario').value;
+            const url = usuarioId ? `${API_NOTAS}/usuario/${usuarioId}` : API_NOTAS;
+
+            logRequest('GET', url);
+
+            fetch(url)
+                .then(response => {
+                    logResponse(response.status);
+                    return response.json();
+                })
+                .then(notas => renderNotas(notas))
+                .catch(() => {
+                    document.getElementById('notasBody').innerHTML =
+                        '<tr><td colspan="5" class="empty-msg" style="color:#c62828;">Error al conectar con la API. \u00bfEst\u00e1 el servidor en marcha?</td></tr>';
+                });
+        }
+
+        // ─── Renderizar la tabla de notas ───
+        function renderNotas(notas) {
+            const tbody = document.getElementById('notasBody');
+
+            if (notas.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">No hay notas. \u00a1Crea la primera!</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = notas.map(nota => {
+                const contenidoCorto = nota.contenido && nota.contenido.length > 60
+                    ? escapeHtml(nota.contenido.substring(0, 60)) + '...'
+                    : escapeHtml(nota.contenido || '');
+                const usuarioNombre = nota.usuario
+                    ? escapeHtml(nota.usuario.nombre || `#${nota.usuario.id}`)
+                    : '<em style="color:#999;">sin usuario</em>';
+                const usuarioId = nota.usuario ? nota.usuario.id : '';
+                return `
+                    <tr>
+                        <td><strong>${nota.id}</strong></td>
+                        <td>${escapeHtml(nota.titulo || '')}</td>
+                        <td style="color:#666;">${contenidoCorto}</td>
+                        <td><span class="usuario-badge">${usuarioNombre}</span></td>
+                        <td>
+                            <div class="actions-cell">
+                                <button class="btn-sm btn-edit" onclick="startEdit(${nota.id}, '${escapeJs(nota.titulo || '')}', '${escapeJs(nota.contenido || '')}', '${usuarioId}')">Editar</button>
+                                <button class="btn-sm btn-delete" onclick="deleteNota(${nota.id})">Eliminar</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ─── Filtrar por usuario ───
+        function filtrarPorUsuario() {
+            loadNotas();
+        }
+
+        // ─── Crear o actualizar nota ───
+        function handleSubmit() {
+            const titulo = document.getElementById('inputTitulo').value.trim();
+            const contenido = document.getElementById('inputContenido').value.trim();
+            const usuarioId = document.getElementById('inputUsuario').value;
+
+            if (!titulo) {
+                showToast('El t\u00edtulo es obligatorio', 'error');
+                return;
+            }
+            if (!usuarioId) {
+                showToast('Selecciona un usuario', 'error');
+                return;
+            }
+
+            // Construimos el body: el usuario se referencia por su id (objeto parcial)
+            const body = JSON.stringify({
+                titulo,
+                contenido,
+                usuario: { id: Number(usuarioId) }
+            });
+            const headers = { 'Content-Type': 'application/json' };
+
+            if (editingId) {
+                // PUT → actualizar nota existente
+                const url = `${API_NOTAS}/${editingId}`;
+                logRequest('PUT', url, body);
+
+                fetch(url, { method: 'PUT', headers, body })
+                    .then(response => {
+                        logResponse(response.status);
+                        if (!response.ok) throw new Error();
+                        return response.json();
+                    })
+                    .then(() => {
+                        showToast('Nota actualizada correctamente', 'success');
+                        cancelEdit();
+                        loadNotas();
+                    })
+                    .catch(() => showToast('Error al actualizar la nota', 'error'));
+            } else {
+                // POST → crear nueva nota
+                logRequest('POST', API_NOTAS, body);
+
+                fetch(API_NOTAS, { method: 'POST', headers, body })
+                    .then(response => {
+                        logResponse(response.status);
+                        if (!response.ok) throw new Error();
+                        return response.json();
+                    })
+                    .then(() => {
+                        showToast('Nota creada correctamente', 'success');
+                        clearForm();
+                        loadNotas();
+                    })
+                    .catch(() => showToast('Error al crear la nota', 'error'));
+            }
+        }
+
+        // ─── Preparar formulario para edicion ───
+        function startEdit(id, titulo, contenido, usuarioId) {
+            editingId = id;
+            document.getElementById('inputTitulo').value = titulo;
+            document.getElementById('inputContenido').value = contenido;
+            document.getElementById('inputUsuario').value = usuarioId;
+            document.getElementById('formTitle').textContent = `Editando nota #${id}`;
+            document.getElementById('btnSubmit').textContent = 'Guardar cambios';
+            document.getElementById('btnSubmit').className = 'btn btn-update';
+            document.getElementById('btnCancel').style.display = 'inline-block';
+
+            // Hacer scroll al formulario para que se vea
+            document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // ─── Cancelar edicion y volver al modo "crear" ───
+        function cancelEdit() {
+            editingId = null;
+            clearForm();
+            document.getElementById('formTitle').textContent = 'Crear nueva nota';
+            document.getElementById('btnSubmit').textContent = 'Crear nota';
+            document.getElementById('btnSubmit').className = 'btn btn-create';
+            document.getElementById('btnCancel').style.display = 'none';
+        }
+
+        // ─── Eliminar nota ───
+        function deleteNota(id) {
+            if (!confirm(`\u00bfEliminar la nota #${id}?`)) return;
+
+            const url = `${API_NOTAS}/${id}`;
+            logRequest('DELETE', url);
+
+            fetch(url, { method: 'DELETE' })
+                .then(response => {
+                    logResponse(response.status);
+                    if (response.status === 204) {
+                        showToast('Nota eliminada', 'success');
+                        loadNotas();
+                    } else {
+                        throw new Error();
+                    }
+                })
+                .catch(() => showToast('Error al eliminar la nota', 'error'));
+        }
+
+        // ─── Panel didactico: mostrar la peticion HTTP ───
+        function logRequest(method, url, body) {
+            const log = document.getElementById('apiLog');
+            let html = `<span class="method method-${method}">${method}</span>`;
+            html += `<span class="url">${url}</span>`;
+            if (body) {
+                html += `<span class="url" style="color:#80cbc4;"> &rarr; ${escapeHtml(body)}</span>`;
+            }
+            html += `<span class="status">enviando...</span>`;
+            log.innerHTML = html;
+        }
+
+        function logResponse(status) {
+            const statusEl = document.querySelector('#apiLog .status');
+            if (statusEl) {
+                statusEl.textContent = `\u2190 ${status} ${httpStatusText(status)}`;
+            }
+        }
+
+        function httpStatusText(code) {
+            const texts = {
+                200: 'OK',
+                201: 'Created',
+                204: 'No Content',
+                404: 'Not Found',
+                500: 'Internal Server Error'
+            };
+            return texts[code] || '';
+        }
+
+        // ─── Toast de notificaciones ───
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast toast-${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // ─── Utilidades ───
+        function clearForm() {
+            document.getElementById('inputTitulo').value = '';
+            document.getElementById('inputContenido').value = '';
+            document.getElementById('inputUsuario').value = '';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+
+        function escapeJs(text) {
+            return String(text).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+    </script>
+</body>
+</html>

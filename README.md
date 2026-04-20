@@ -1,7 +1,8 @@
 # UserApp — Spring Boot + JPA + H2
 
 Proyecto de ejemplo para el alumnado de **1º DAM / DAW**.
-Una API REST con CRUD de usuarios usando Spring Boot, JPA y una base de datos H2 en memoria.
+Una API REST con CRUD de usuarios y notas usando Spring Boot, JPA y una base de datos H2 en memoria.
+Incluye una relación `@ManyToOne` / `@OneToMany` entre `Nota` y `User` como ejemplo de relaciones JPA.
 
 ---
 
@@ -56,6 +57,7 @@ Para parar el servidor pulsa `Ctrl + C` en la terminal.
 |---|---|
 | `/` | Pagina de inicio con enlaces a todo |
 | `/users.html` | Interfaz web para gestionar usuarios (CRUD) |
+| `/notas.html` | Interfaz web para gestionar notas — muestra la relacion `@ManyToOne` en accion |
 | `/h2-info.html` | Instrucciones para la consola H2 |
 | `/h2-console` | Consola SQL de la base de datos H2 |
 | `/actuator-info.html` | Visualizacion de endpoints de Actuator |
@@ -65,7 +67,7 @@ Para parar el servidor pulsa `Ctrl + C` en la terminal.
 
 ## API REST — Endpoints
 
-Base URL: `/api/v1/users`
+### Usuarios — `/api/v1/users`
 
 | Metodo | URL | Descripcion | Respuesta |
 |---|---|---|---|
@@ -75,12 +77,32 @@ Base URL: `/api/v1/users`
 | `PUT` | `/api/v1/users/{id}` | Actualizar un usuario | `200 OK` / `404 Not Found` |
 | `DELETE` | `/api/v1/users/{id}` | Eliminar un usuario | `204 No Content` / `404 Not Found` |
 
-### Ejemplo — Crear un usuario con curl
+### Notas — `/api/v1/notas`
+
+| Metodo | URL | Descripcion | Respuesta |
+|---|---|---|---|
+| `GET` | `/api/v1/notas` | Listar todas las notas | `200 OK` |
+| `GET` | `/api/v1/notas/{id}` | Obtener una nota por ID | `200 OK` / `404 Not Found` |
+| `GET` | `/api/v1/notas/usuario/{id}` | Notas de un usuario concreto | `200 OK` |
+| `POST` | `/api/v1/notas` | Crear una nueva nota | `201 Created` |
+| `PUT` | `/api/v1/notas/{id}` | Actualizar una nota | `200 OK` / `404 Not Found` |
+| `DELETE` | `/api/v1/notas/{id}` | Eliminar una nota | `204 No Content` / `404 Not Found` |
+
+### Ejemplos con curl
 
 ```bash
+# Crear un usuario
 curl -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
   -d '{"nombre": "Ana Garcia", "email": "ana@ejemplo.com"}'
+
+# Crear una nota asignada al usuario con id=1
+curl -X POST http://localhost:8080/api/v1/notas \
+  -H "Content-Type: application/json" \
+  -d '{"titulo": "Mi primera nota", "contenido": "Texto de ejemplo", "usuario": {"id": 1}}'
+
+# Ver solo las notas del usuario 1
+curl http://localhost:8080/api/v1/notas/usuario/1
 ```
 
 ---
@@ -89,14 +111,25 @@ curl -X POST http://localhost:8080/api/v1/users \
 
 ```
 src/main/java/com/damw/userapp/
-├── controller/          ← Endpoints HTTP (@RestController)
-├── service/             ← Logica de negocio (@Service)
-├── repository/          ← Acceso a datos (JpaRepository)
-├── model/               ← Entidad JPA (User)
+├── controller/
+│   ├── UserController.java   ← Endpoints HTTP de usuarios
+│   └── NotaController.java   ← Endpoints HTTP de notas
+├── service/
+│   ├── UserService.java      ← Logica de negocio de usuarios
+│   └── NotaService.java      ← Logica de negocio de notas
+├── repository/
+│   ├── UserRepository.java   ← JpaRepository<User, Long>
+│   └── NotaRepository.java   ← JpaRepository<Nota, Long> + findByUsuarioId
+├── model/
+│   ├── User.java             ← Entidad JPA — tabla USERS (@OneToMany → Nota)
+│   └── Nota.java             ← Entidad JPA — tabla NOTAS (@ManyToOne → User)
 └── UserappApplication.java
 
 src/main/resources/
-├── static/              ← Paginas HTML del dashboard
+├── static/
+│   ├── index.html            ← Pagina de inicio
+│   ├── users.html            ← CRUD de usuarios
+│   └── notas.html            ← CRUD de notas con filtro por usuario
 └── application.properties
 ```
 
@@ -139,12 +172,36 @@ Desde la pagina `/h2-info.html` o directamente en `/h2-console`:
 
 ---
 
+## Relacion JPA — @ManyToOne / @OneToMany
+
+Una `Nota` pertenece a un `User`. Esto se modela con:
+
+```
+USERS                    NOTAS
+┌────────────────┐       ┌──────────────────────────┐
+│ id  (PK)       │◄──┐   │ id         (PK)           │
+│ nombre         │   └───│ usuario_id (FK → USERS.id)│
+│ email          │       │ titulo                    │
+└────────────────┘       │ contenido                 │
+                         └──────────────────────────┘
+```
+
+En Java, la relacion se declara con dos anotaciones:
+
+- `@ManyToOne` en `Nota.usuario` — crea la columna FK `usuario_id` en la tabla NOTAS
+- `@OneToMany(mappedBy="usuario")` en `User.notas` — relacion inversa, sin FK adicional
+- `@JsonIgnore` en `User.notas` — evita recursion infinita al serializar a JSON
+- `@ToString.Exclude` en `User.notas` — evita recursion en el `toString()` que genera Lombok
+
+---
+
 ## Objetivo pedagogico
 
 Este proyecto demuestra que:
 
 1. **JPA abstrae la base de datos** — el codigo Java no cambia entre H2 y MySQL
-2. **La arquitectura por capas** tiene sentido practico, no es solo teoria
-3. **Spring Boot** reduce enormemente el codigo necesario para una API funcional
+2. **Las relaciones JPA** (`@ManyToOne` / `@OneToMany`) se traducen directamente a claves foraneas en SQL
+3. **La arquitectura por capas** tiene sentido practico, no es solo teoria
+4. **Spring Boot** reduce enormemente el codigo necesario para una API funcional
 
 Cuando se migre a MySQL, solo cambiara `application.properties`. El resto del codigo Java permanece intacto.

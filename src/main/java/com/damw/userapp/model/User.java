@@ -1,14 +1,20 @@
 package com.damw.userapp.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity // Marca esta clase como una entidad JPA (se mapea a una tabla en la BD)
 @Table(name = "users") // Nombre explícito de la tabla en la base de datos
@@ -25,6 +31,37 @@ public class User {
     private String nombre;
 
     private String email;
+
+    // @OneToMany es la relación inversa: UN usuario puede tener MUCHAS notas.
+    // mappedBy = "usuario" indica que la FK está en la entidad Nota (campo usuario),
+    // y que Nota es quien gestiona esa columna en la BD — User solo "conoce" la relación.
+    // @JsonIgnore evita la recursión infinita al serializar a JSON: User → Nota → User → ...
+    @OneToMany(mappedBy = "usuario")
+    @JsonIgnore
+    // -------------------------------------------------------------------------
+    // @ToString.Exclude — anotación de Lombok
+    // -------------------------------------------------------------------------
+    // @Data genera automáticamente un método toString() que imprime TODOS los
+    // campos de la clase. Sin esta anotación, al imprimir un User ocurriría:
+    //
+    //   User.toString()
+    //     └─► imprime el campo "notas" → llama a Nota.toString()
+    //           └─► imprime el campo "usuario" → llama a User.toString()
+    //                 └─► imprime el campo "notas" → llama a Nota.toString()
+    //                       └─► ... ∞  StackOverflowError
+    //
+    // Con @ToString.Exclude le decimos a Lombok:
+    //   "excluye el campo 'notas' del toString() generado"
+    //
+    // Resultado — toString() generado CON esta anotación:
+    //   User(id=1, nombre=Ana, email=ana@mail.com)   ✔ seguro
+    //
+    // Resultado — toString() generado SIN esta anotación:
+    //   User(id=1, nombre=Ana, email=ana@mail.com, notas=[Nota(id=1, titulo=...,
+    //   usuario=User(id=1, nombre=Ana, notas=[Nota(id=1, ...   ← bucle infinito ✘
+    // -------------------------------------------------------------------------
+    @ToString.Exclude
+    private List<Nota> notas = new ArrayList<>();
 }
 
 /*

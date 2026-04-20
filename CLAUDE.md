@@ -9,14 +9,19 @@ Este proyecto es un **ejemplo didáctico** que uso en clase para enseñar Spring
 
 ## ¿Qué es este proyecto?
 
-Una API REST en Spring Boot 4.x con H2 en memoria que implementa un CRUD de usuarios.
+Una API REST en Spring Boot 4.x con H2 en memoria que implementa un CRUD de usuarios y notas.
 Sirve como ejemplo progresivo para el alumnado: primero con H2 (sin instalar nada),
 después evolucionará a MySQL para ver cómo JPA abstrae la base de datos.
+
+Incluye una relación `@ManyToOne` / `@OneToMany` entre `Nota` y `User` como ejemplo
+didáctico de relaciones JPA después de que el alumnado las vea en teoría.
 
 El proyecto incluye páginas HTML estáticas en `src/main/resources/static/` que sirven
 como dashboard visual para el alumnado:
 
 - `index.html` → página de inicio con enlaces
+- `users.html` → CRUD de usuarios (gradiente verde)
+- `notas.html` → CRUD de notas con filtro por usuario (gradiente índigo) — muestra `@ManyToOne` en acción
 - `h2-info.html` → instrucciones para conectarse a la consola H2
 - `actuator-info.html` → visualización de endpoints de Actuator
 - `health-info.html` → health check en tiempo real
@@ -43,14 +48,24 @@ como dashboard visual para el alumnado:
 src/main/java/com/damw/userapp/
 ├── config/              ← configuraciones Spring (solo si es estrictamente necesario)
 ├── controller/          ← @RestController, endpoints HTTP
+│   ├── UserController.java
+│   └── NotaController.java
 ├── model/               ← @Entity, clases JPA
+│   ├── User.java        ← tabla USERS — @OneToMany → Nota
+│   └── Nota.java        ← tabla NOTAS — @ManyToOne → User (FK: usuario_id)
 ├── repository/          ← interfaces JpaRepository
+│   ├── UserRepository.java
+│   └── NotaRepository.java
 ├── service/             ← @Service, lógica de negocio
+│   ├── UserService.java
+│   └── NotaService.java
 └── UserappApplication.java
 
 src/main/resources/
 ├── static/              ← HTML estático (NO tocar sin permiso explícito)
 │   ├── index.html
+│   ├── users.html
+│   ├── notas.html
 │   ├── h2-info.html
 │   ├── actuator-info.html
 │   └── health-info.html
@@ -134,6 +149,16 @@ public class User {
 
 ---
 
+## Relación JPA entre User y Nota
+
+- `Nota` tiene `@ManyToOne` sobre `usuario` con `@JoinColumn(name = "usuario_id")` — crea la FK en la tabla NOTAS
+- `User` tiene `@OneToMany(mappedBy = "usuario")` — relación inversa, sin FK adicional
+- `@JsonIgnore` en `User.notas` — evita recursión infinita en la serialización JSON
+- `@ToString.Exclude` en `User.notas` — evita recursión en el `toString()` generado por Lombok
+- El endpoint `GET /api/v1/notas/usuario/{id}` usa el método derivado `findByUsuarioId` en `NotaRepository`
+
+---
+
 ## Lo que NO debe tocar Claude Code sin permiso explícito
 
 - Los ficheros HTML en `src/main/resources/static/` — están revisados y aprobados
@@ -168,8 +193,15 @@ Sin esta dependencia, la consola H2 devuelve 404 aunque la propiedad esté habil
 Este proyecto demuestra al alumnado que:
 
 1. JPA abstrae la base de datos — el código Java no cambia entre H2 y MySQL
-2. La arquitectura por capas tiene sentido práctico, no es solo teoría
-3. Spring Boot reduce enormemente el código necesario para una API funcional
+2. Las relaciones JPA (`@ManyToOne` / `@OneToMany`) se traducen directamente a claves foráneas en SQL
+3. La arquitectura por capas tiene sentido práctico, no es solo teoría
+4. Spring Boot reduce enormemente el código necesario para una API funcional
+
+Flujo didáctico con Nota:
+1. El alumnado crea un usuario en `/users.html`
+2. Va a `/notas.html` y crea notas asignadas a ese usuario
+3. Usa el filtro para ver cómo las notas se agrupan por usuario
+4. Abre `/h2-console` y comprueba que la tabla `NOTAS` tiene la columna `USUARIO_ID`
 
 Cuando se migre a MySQL, **solo cambiará el `application.properties`**.
 El resto del código Java permanece intacto. Eso es lo que queremos que vean.
