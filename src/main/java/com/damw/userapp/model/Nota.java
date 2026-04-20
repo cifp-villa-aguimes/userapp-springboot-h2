@@ -29,11 +29,38 @@ public class Nota {
 
     private String contenido;
 
-    // @ManyToOne indica que MUCHAS notas pueden pertenecer a UN solo usuario.
-    // Esta anotación es la que crea la clave foránea (FK) en la tabla NOTAS.
-    // @JoinColumn define el nombre de esa columna FK en la BD: USUARIO_ID
+    // -------------------------------------------------------------------------
+    // @ManyToOne — "MUCHAS notas pertenecen a UN usuario"
+    // -------------------------------------------------------------------------
+    // Esta anotación define el lado "muchos" de la relación y es la responsable
+    // de crear la columna de clave foránea (FK) en la tabla NOTAS.
+    //
+    // En Java tenemos un objeto:          En la BD se traduce a una columna FK:
+    //
+    //   Nota {                              tabla NOTAS
+    //     Long id;                         ┌─────────────────────────────┐
+    //     String titulo;                   │ ID  │ TITULO │ USUARIO_ID  │
+    //     String contenido;                │  1  │ "Apun" │      3      │──┐
+    //     User usuario;   ←── objeto       │  2  │ "Ejer" │      3      │──┤
+    //   }                                  └─────────────────────────────┘  │
+    //                                                                        │
+    //                                      tabla USERS                       │
+    //                                      ┌────────────────────┐           │
+    //                                      │ ID  │ NOMBRE        │           │
+    //                                      │  3  │ "Ana"         │◄──────────┘
+    //                                      └────────────────────┘
+    //
+    // @JoinColumn(name = "usuario_id") le dice a JPA cómo llamar a esa columna
+    // FK en la base de datos. Sin esta anotación, JPA inventaría un nombre.
+    //
+    // Regla para recordarlo:
+    //   @ManyToOne siempre va en el lado que tiene la FK en la tabla.
+    //   Aquí NOTAS tiene USUARIO_ID, por eso @ManyToOne está en Nota, no en User.
+    //
+    // La relación inversa (@OneToMany) está declarada en User.java.
+    // -------------------------------------------------------------------------
     @ManyToOne
-    @JoinColumn(name = "usuario_id") // columna FK que apunta a la tabla USERS
+    @JoinColumn(name = "usuario_id") // nombre de la columna FK en la tabla NOTAS
     @ToString.Exclude // evita recursión infinita en el toString() de Lombok: Nota → User → Nota → ...
     private User usuario;
 }

@@ -32,9 +32,36 @@ public class User {
 
     private String email;
 
-    // @OneToMany es la relación inversa: UN usuario puede tener MUCHAS notas.
-    // mappedBy = "usuario" indica que la FK está en la entidad Nota (campo usuario),
-    // y que Nota es quien gestiona esa columna en la BD — User solo "conoce" la relación.
+    // -------------------------------------------------------------------------
+    // @OneToMany — "UN usuario puede tener MUCHAS notas"
+    // -------------------------------------------------------------------------
+    // Esta anotación define el lado "uno" de la relación. Es la relación inversa
+    // de @ManyToOne en Nota.java — las dos juntas forman la relación bidireccional.
+    //
+    // IMPORTANTE: @OneToMany NO crea ninguna columna nueva en la tabla USERS.
+    // La FK (USUARIO_ID) sigue viviendo en la tabla NOTAS, igual que antes.
+    // Este campo solo existe en Java para poder navegar la relación en código:
+    //
+    //   Sin @OneToMany:   user.getNotas()  →  ✘ no existe, tendrías que ir al repo
+    //   Con @OneToMany:   user.getNotas()  →  ✔ JPA carga la lista automáticamente
+    //
+    // mappedBy = "usuario"
+    //   Le dice a JPA: "la FK no está aquí, está en el campo 'usuario' de Nota".
+    //   Sin mappedBy, JPA crearía una tabla intermedia innecesaria (USER_NOTAS).
+    //
+    //   Nota.java                        User.java
+    //   ┌─────────────────────┐          ┌──────────────────────────────┐
+    //   │ @ManyToOne          │          │ @OneToMany(mappedBy="usuario")│
+    //   │ @JoinColumn(        │          │                              │
+    //   │   name="usuario_id")│          │  ← no crea columna en USERS  │
+    //   │ private User usuario│◄─────────│ private List<Nota> notas     │
+    //   └─────────────────────┘          └──────────────────────────────┘
+    //         ▲ dueño de la FK                    ▲ lado inverso
+    //
+    // Regla para recordarlo:
+    //   mappedBy apunta al nombre del campo en la clase del otro lado (@ManyToOne).
+    //   En Nota.java el campo se llama "usuario" → mappedBy = "usuario".
+    //
     // @JsonIgnore evita la recursión infinita al serializar a JSON: User → Nota → User → ...
     @OneToMany(mappedBy = "usuario")
     @JsonIgnore
