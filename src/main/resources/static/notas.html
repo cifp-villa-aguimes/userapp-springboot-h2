@@ -20,7 +20,7 @@
             background: white;
             border-radius: 16px;
             padding: 40px;
-            max-width: 800px;
+            max-width: 1100px;
             width: 100%;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
@@ -171,7 +171,15 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 14px;
+            table-layout: fixed;
         }
+        /* Anchos de columna para distribuir el espacio de la tabla de notas */
+        thead th:nth-child(1) { width: 52px; }   /* ID */
+        thead th:nth-child(2) { width: 18%; }     /* Título */
+        thead th:nth-child(3) { width: 26%; }     /* Contenido */
+        thead th:nth-child(4) { width: 13%; }     /* Usuario */
+        thead th:nth-child(5) { width: 22%; }     /* Etiquetas */
+        thead th:nth-child(6) { width: 140px; }   /* Acciones */
         thead th {
             background: #f5f5f5;
             padding: 12px 16px;
@@ -186,6 +194,8 @@
             padding: 12px 16px;
             border-bottom: 1px solid #f0f0f0;
             vertical-align: middle;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         tbody tr:hover { background: #f5f5ff; }
         .actions-cell {
@@ -218,6 +228,16 @@
             border-radius: 12px;
             font-size: 12px;
             font-weight: 600;
+        }
+        .etiqueta-badge {
+            display: inline-block;
+            background: #e8f5e9;
+            color: #1b5e20;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin: 2px 2px 2px 0;
         }
 
         /* Tip didactico */
@@ -325,6 +345,16 @@
                     <option value="">-- Selecciona un usuario --</option>
                 </select>
             </div>
+            <!-- Selector múltiple de etiquetas — @ManyToMany en el formulario -->
+            <div class="form-row" style="flex-direction:column;gap:6px;margin-bottom:0;">
+                <label style="font-size:13px;font-weight:600;color:#1a237e;">
+                    &#127991; Etiquetas (puedes seleccionar varias):
+                </label>
+                <div id="etiquetasCheckboxes"
+                     style="padding:10px 12px;background:white;border:2px solid #c5cae9;border-radius:8px;min-height:36px;">
+                    <span style="color:#aaa;font-size:13px;">Cargando etiquetas...</span>
+                </div>
+            </div>
             <div class="form-actions">
                 <button class="btn btn-create" id="btnSubmit" onclick="handleSubmit()">Crear nota</button>
                 <button class="btn btn-cancel" id="btnCancel" onclick="cancelEdit()" style="display:none;">Cancelar</button>
@@ -341,11 +371,12 @@
                         <th>T&iacute;tulo</th>
                         <th>Contenido</th>
                         <th>Usuario</th>
+                        <th>Etiquetas</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="notasBody">
-                    <tr><td colspan="5" class="empty-msg">Cargando...</td></tr>
+                    <tr><td colspan="6" class="empty-msg">Cargando...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -374,6 +405,7 @@
         // URLs base de las APIs REST
         const API_NOTAS = '/api/v1/notas';
         const API_USERS = '/api/v1/users';
+        const API_ETIQUETAS = '/api/v1/etiquetas';
 
         // Estado: si estamos editando, guardamos el id
         let editingId = null;
@@ -381,9 +413,13 @@
         // Mapa de usuarios para mostrar el nombre en la tabla (id → nombre)
         let usuariosMap = {};
 
-        // ─── Inicializar la pagina ───
+        // Cache de notas cargadas — permite que startEdit() acceda a los datos
+        // sin pasar objetos complejos (JSON con comillas dobles) en atributos onclick
+        let notasCache = [];
+
+        // ─── Inicializar la pagina: cargamos usuarios Y etiquetas en paralelo ───
         document.addEventListener('DOMContentLoaded', () => {
-            cargarUsuarios().then(() => loadNotas());
+            Promise.all([cargarUsuarios(), cargarEtiquetas()]).then(() => loadNotas());
         });
 
         // ─── Cargar usuarios en los selects y en el mapa ───
@@ -424,6 +460,46 @@
                 });
         }
 
+        // ─── Cargar etiquetas disponibles para los checkboxes del formulario ───
+        function cargarEtiquetas() {
+            return fetch(API_ETIQUETAS)
+                .then(response => response.json())
+                .then(etiquetas => {
+                    const contenedor = document.getElementById('etiquetasCheckboxes');
+                    if (!contenedor) return;
+
+                    if (etiquetas.length === 0) {
+                        contenedor.innerHTML =
+                            '<em style="color:#aaa;font-size:13px;">No hay etiquetas. ' +
+                            'Crea algunas en <a href="/etiquetas.html" style="color:#1b5e20;">/etiquetas.html</a></em>';
+                        return;
+                    }
+
+                    // Construimos un checkbox por cada etiqueta disponible
+                    contenedor.innerHTML = '';
+                    etiquetas.forEach(e => {
+                        const label = document.createElement('label');
+                        label.style.cssText =
+                            'display:inline-flex;align-items:center;gap:4px;' +
+                            'margin:3px 10px 3px 0;font-size:13px;cursor:pointer;';
+                        const cb = document.createElement('input');
+                        cb.type = 'checkbox';
+                        cb.value = e.id;
+                        cb.id = `cb_etiqueta_${e.id}`;
+                        cb.style.cursor = 'pointer';
+                        label.appendChild(cb);
+                        label.appendChild(document.createTextNode(' ' + e.nombre));
+                        contenedor.appendChild(label);
+                    });
+                })
+                .catch(() => {
+                    // Si la API de etiquetas no responde, seguimos funcionando sin ellas
+                    const contenedor = document.getElementById('etiquetasCheckboxes');
+                    if (contenedor) contenedor.innerHTML =
+                        '<em style="color:#aaa;font-size:13px;">No se pudieron cargar las etiquetas</em>';
+                });
+        }
+
         // ─── Funcion principal: listar todas las notas (o filtradas) ───
         function loadNotas() {
             const usuarioId = document.getElementById('filtroUsuario').value;
@@ -439,7 +515,7 @@
                 .then(notas => renderNotas(notas))
                 .catch(() => {
                     document.getElementById('notasBody').innerHTML =
-                        '<tr><td colspan="5" class="empty-msg" style="color:#c62828;">Error al conectar con la API. \u00bfEst\u00e1 el servidor en marcha?</td></tr>';
+                        '<tr><td colspan="6" class="empty-msg" style="color:#c62828;">Error al conectar con la API. \u00bfEst\u00e1 el servidor en marcha?</td></tr>';
                 });
         }
 
@@ -448,9 +524,15 @@
             const tbody = document.getElementById('notasBody');
 
             if (notas.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">No hay notas. \u00a1Crea la primera!</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">No hay notas. \u00a1Crea la primera!</td></tr>';
                 return;
             }
+
+            // Guardamos las notas en el cache para que startEdit() pueda acceder
+            // a los datos completos (titulo, contenido, etiquetas) usando solo el id.
+            // Esto evita poner JSON con comillas dobles en atributos onclick="...",
+            // que el HTML parser interpreta como cierre del atributo.
+            notasCache = notas;
 
             tbody.innerHTML = notas.map(nota => {
                 const contenidoCorto = nota.contenido && nota.contenido.length > 60
@@ -459,16 +541,21 @@
                 const usuarioNombre = nota.usuario
                     ? escapeHtml(nota.usuario.nombre || `#${nota.usuario.id}`)
                     : '<em style="color:#999;">sin usuario</em>';
-                const usuarioId = nota.usuario ? nota.usuario.id : '';
+                const etiquetasHtml = (nota.etiquetas && nota.etiquetas.length > 0)
+                    ? nota.etiquetas.map(e =>
+                        `<span class="etiqueta-badge">${escapeHtml(e.nombre)}</span>`
+                      ).join('')
+                    : '<em style="color:#ccc;font-size:12px;">ninguna</em>';
                 return `
                     <tr>
                         <td><strong>${nota.id}</strong></td>
                         <td>${escapeHtml(nota.titulo || '')}</td>
                         <td style="color:#666;">${contenidoCorto}</td>
                         <td><span class="usuario-badge">${usuarioNombre}</span></td>
+                        <td>${etiquetasHtml}</td>
                         <td>
                             <div class="actions-cell">
-                                <button class="btn-sm btn-edit" onclick="startEdit(${nota.id}, '${escapeJs(nota.titulo || '')}', '${escapeJs(nota.contenido || '')}', '${usuarioId}')">Editar</button>
+                                <button class="btn-sm btn-edit" onclick="startEdit(${nota.id})">Editar</button>
                                 <button class="btn-sm btn-delete" onclick="deleteNota(${nota.id})">Eliminar</button>
                             </div>
                         </td>
@@ -497,11 +584,18 @@
                 return;
             }
 
-            // Construimos el body: el usuario se referencia por su id (objeto parcial)
+            // Recogemos las etiquetas seleccionadas como array de objetos {id: X}
+            // (el mismo formato que espera la API y que Spring deserializará a Set<Etiqueta>)
+            const etiquetasSeleccionadas = Array.from(
+                document.querySelectorAll('#etiquetasCheckboxes input[type="checkbox"]:checked')
+            ).map(cb => ({ id: Number(cb.value) }));
+
+            // Construimos el body: usuario y etiquetas se referencian solo por su id
             const body = JSON.stringify({
                 titulo,
                 contenido,
-                usuario: { id: Number(usuarioId) }
+                usuario: { id: Number(usuarioId) },
+                etiquetas: etiquetasSeleccionadas
             });
             const headers = { 'Content-Type': 'application/json' };
 
@@ -542,11 +636,24 @@
         }
 
         // ─── Preparar formulario para edicion ───
-        function startEdit(id, titulo, contenido, usuarioId) {
+        // Recibe solo el id — los datos completos se leen desde notasCache.
+        // Así evitamos pasar strings con saltos de línea o JSON con comillas
+        // dobles en el atributo onclick="..." del HTML.
+        function startEdit(id) {
+            const nota = notasCache.find(n => n.id === id);
+            if (!nota) return;
+
             editingId = id;
-            document.getElementById('inputTitulo').value = titulo;
-            document.getElementById('inputContenido').value = contenido;
-            document.getElementById('inputUsuario').value = usuarioId;
+            document.getElementById('inputTitulo').value = nota.titulo || '';
+            document.getElementById('inputContenido').value = nota.contenido || '';
+            document.getElementById('inputUsuario').value = nota.usuario ? nota.usuario.id : '';
+
+            // Pre-seleccionar los checkboxes de las etiquetas actuales de la nota
+            const idsActuales = new Set((nota.etiquetas || []).map(e => e.id));
+            document.querySelectorAll('#etiquetasCheckboxes input[type="checkbox"]').forEach(cb => {
+                cb.checked = idsActuales.has(Number(cb.value));
+            });
+
             document.getElementById('formTitle').textContent = `Editando nota #${id}`;
             document.getElementById('btnSubmit').textContent = 'Guardar cambios';
             document.getElementById('btnSubmit').className = 'btn btn-update';
@@ -559,6 +666,9 @@
         // ─── Cancelar edicion y volver al modo "crear" ───
         function cancelEdit() {
             editingId = null;
+            // Desmarcar todos los checkboxes de etiquetas
+            document.querySelectorAll('#etiquetasCheckboxes input[type="checkbox"]')
+                .forEach(cb => cb.checked = false);
             clearForm();
             document.getElementById('formTitle').textContent = 'Crear nueva nota';
             document.getElementById('btnSubmit').textContent = 'Crear nota';
@@ -629,16 +739,14 @@
             document.getElementById('inputTitulo').value = '';
             document.getElementById('inputContenido').value = '';
             document.getElementById('inputUsuario').value = '';
+            document.querySelectorAll('#etiquetasCheckboxes input[type="checkbox"]')
+                .forEach(cb => cb.checked = false);
         }
 
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = String(text);
             return div.innerHTML;
-        }
-
-        function escapeJs(text) {
-            return String(text).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         }
     </script>
 </body>

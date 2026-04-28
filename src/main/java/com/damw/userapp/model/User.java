@@ -50,12 +50,12 @@ public class User {
     //   Sin mappedBy, JPA crearía una tabla intermedia innecesaria (USER_NOTAS).
     //
     //   Nota.java                        User.java
-    //   ┌─────────────────────┐          ┌──────────────────────────────┐
+    //   ┌─────────────────────┐          ┌─────────────────────────────-─┐
     //   │ @ManyToOne          │          │ @OneToMany(mappedBy="usuario")│
-    //   │ @JoinColumn(        │          │                              │
-    //   │   name="usuario_id")│          │  ← no crea columna en USERS  │
-    //   │ private User usuario│◄─────────│ private List<Nota> notas     │
-    //   └─────────────────────┘          └──────────────────────────────┘
+    //   │ @JoinColumn(        │          │                               │
+    //   │   name="usuario_id")│          │  ← no crea columna en USERS   │
+    //   │ private User usuario│◄─────────│ private List<Nota> notas      │
+    //   └─────────────────────┘          └──────────────────────────────-┘
     //         ▲ dueño de la FK                    ▲ lado inverso
     //
     // Regla para recordarlo:
@@ -88,6 +88,9 @@ public class User {
     //   usuario=User(id=1, nombre=Ana, notas=[Nota(id=1, ...   ← bucle infinito ✘
     // -------------------------------------------------------------------------
     @ToString.Exclude
+    @Builder.Default // Necesario para que @Builder de Lombok respete la inicialización con new
+                     // ArrayList<>(), de lo contrario el builder pondría null en vez de una lista
+                     // vacía
     private List<Nota> notas = new ArrayList<>();
 }
 

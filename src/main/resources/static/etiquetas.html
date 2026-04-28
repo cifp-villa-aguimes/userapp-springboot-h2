@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionar Etiquetas - UserApp</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 40px 16px;
+            color: #333;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .header { text-align: center; margin-bottom: 32px; }
+        .icon { font-size: 56px; margin-bottom: 12px; }
+        h1 { font-size: 26px; color: #1b5e20; margin-bottom: 6px; }
+        .subtitle { font-size: 14px; color: #888; }
+        .subtitle code {
+            background: #e8f5e9;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #1b5e20;
+        }
+
+        /* Panel didáctico de peticiones HTTP */
+        .api-log {
+            background: #263238;
+            color: #a5d6a7;
+            border-radius: 10px;
+            padding: 14px 18px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin-bottom: 24px;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+        }
+        .api-log .method {
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        .method-GET    { background: #1565c0; color: white; }
+        .method-POST   { background: #2e7d32; color: white; }
+        .method-DELETE { background: #c62828; color: white; }
+        .api-log .status { color: #fdd835; margin-left: auto; white-space: nowrap; }
+        .api-log .url { color: #e0e0e0; word-break: break-all; }
+
+        /* Formulario */
+        .form-section {
+            background: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .form-section h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #2e7d32;
+            margin-bottom: 16px;
+        }
+        .form-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .form-row input {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 16px;
+            border: 2px solid #c8e6c9;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        .form-row input:focus {
+            outline: none;
+            border-color: #2e7d32;
+        }
+        .form-actions { margin-top: 12px; }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn-create { background: #2e7d32; color: white; }
+
+        /* Tabla */
+        .table-section { margin-bottom: 24px; }
+        .table-section h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #2e7d32;
+            margin-bottom: 12px;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        thead th {
+            background: #f5f5f5;
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #777;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        tbody td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: middle;
+        }
+        tbody tr:hover { background: #f9fbe7; }
+        .btn-sm {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: transform 0.15s;
+        }
+        .btn-sm:hover { transform: translateY(-1px); }
+        .btn-delete { background: #ffebee; color: #c62828; }
+        .empty-msg {
+            text-align: center;
+            padding: 32px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        /* Tip didáctico */
+        .tip {
+            background: #fff8e1;
+            border-left: 4px solid #ffc107;
+            border-radius: 0 8px 8px 0;
+            padding: 14px 18px;
+            font-size: 13px;
+            color: #6d5c00;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .tip strong { color: #5d4000; }
+        .tip code {
+            background: #fff3cd;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .tip a { color: #1b5e20; font-weight: 600; }
+
+        /* Acciones inferiores */
+        .bottom-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+        .btn-nav {
+            flex: 1;
+            min-width: 120px;
+            display: block;
+            text-align: center;
+            padding: 14px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 15px;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .btn-nav:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn-nav-primary   { background: #2e7d32; color: white; }
+        .btn-nav-h2        { background: #e3f2fd; color: #1565c0; }
+        .btn-nav-secondary { background: #f0f0f0; color: #555; }
+
+        /* Toast de notificaciones */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        .toast.show { transform: translateX(0); }
+        .toast-success { background: #2e7d32; }
+        .toast-error   { background: #c62828; }
+
+        @media (max-width: 600px) {
+            .card { padding: 24px; }
+            .form-row { flex-direction: column; }
+            table { font-size: 13px; }
+            thead th, tbody td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="header">
+            <div class="icon">&#127991;</div>
+            <h1>Gesti&oacute;n de Etiquetas</h1>
+            <p class="subtitle">
+                Relaci&oacute;n <code>@ManyToMany</code> en acci&oacute;n &mdash;
+                <code>/api/v1/etiquetas</code>
+            </p>
+        </div>
+
+        <!-- Panel didáctico: muestra la última petición HTTP en tiempo real -->
+        <div class="api-log" id="apiLog">
+            <span style="color:#78909c;">Realiza una acci&oacute;n para ver la petici&oacute;n HTTP aqu&iacute;...</span>
+        </div>
+
+        <!-- Formulario crear etiqueta — solo nombre, sin edición (no hay PUT) -->
+        <div class="form-section">
+            <h2>&#43; Crear nueva etiqueta</h2>
+            <div class="form-row">
+                <input
+                    type="text"
+                    id="inputNombre"
+                    placeholder="Nombre de la etiqueta (ej: Java, Spring, Examen...)"
+                    onkeydown="if(event.key==='Enter') handleSubmit()"
+                >
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-create" onclick="handleSubmit()">Crear etiqueta</button>
+            </div>
+        </div>
+
+        <!-- Tabla de etiquetas -->
+        <div class="table-section">
+            <h2>Etiquetas en la base de datos H2</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Eliminar</th>
+                    </tr>
+                </thead>
+                <tbody id="etiquetasBody">
+                    <tr><td colspan="3" class="empty-msg">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Tip didáctico sobre @ManyToMany -->
+        <div class="tip">
+            <strong>&#128161; &iquest;Qu&eacute; ocurre en la BD con <code>@ManyToMany</code>?</strong><br><br>
+            Las etiquetas son el <strong>lado inverso</strong> de la relaci&oacute;n <code>@ManyToMany</code>.
+            Se crean aqu&iacute; y despu&eacute;s se asignan a las notas desde
+            <a href="/notas.html">notas.html</a>.<br><br>
+            Hibernate genera autom&aacute;ticamente una <strong>tabla intermedia</strong>
+            <code>NOTA_ETIQUETA</code> con dos columnas: <code>NOTA_ID</code> y <code>ETIQUETA_ID</code>.
+            Cada fila representa un v&iacute;nculo entre una nota concreta y una etiqueta concreta.
+            No hay ninguna FK en las tablas principales.<br><br>
+            Compru&eacute;balo en la
+            <a href="/h2-console" target="_blank">consola H2</a>: ver&aacute;s tres tablas:
+            <code>NOTAS</code>, <code>ETIQUETAS</code> y <code>NOTA_ETIQUETA</code>.
+            Ejecuta <code>SELECT * FROM NOTA_ETIQUETA</code> para ver cada asociaci&oacute;n.
+        </div>
+
+        <div class="bottom-actions">
+            <a href="/api/v1/etiquetas" class="btn-nav btn-nav-primary" target="_blank">Ver JSON crudo</a>
+            <a href="/h2-info.html"     class="btn-nav btn-nav-h2">&#128450; Ver tabla en H2</a>
+            <a href="/"                 class="btn-nav btn-nav-secondary">&#8592; Inicio</a>
+        </div>
+    </div>
+
+    <!-- Toast de notificaciones -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // URL base de la API de etiquetas
+        const API = '/api/v1/etiquetas';
+
+        // ─── Cargar etiquetas al abrir la página ───
+        document.addEventListener('DOMContentLoaded', loadEtiquetas);
+
+        // ─── Listar todas las etiquetas ───
+        function loadEtiquetas() {
+            logRequest('GET', API);
+
+            fetch(API)
+                .then(response => {
+                    logResponse(response.status);
+                    return response.json();
+                })
+                .then(etiquetas => {
+                    const tbody = document.getElementById('etiquetasBody');
+
+                    if (etiquetas.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' +
+                            'No hay etiquetas. \u00a1Crea la primera!</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = etiquetas.map(e => `
+                        <tr>
+                            <td><strong>${e.id}</strong></td>
+                            <td>${escapeHtml(e.nombre)}</td>
+                            <td>
+                                <button class="btn-sm btn-delete"
+                                    onclick="deleteEtiqueta(${e.id}, '${escapeJs(e.nombre)}')">
+                                    Eliminar
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                })
+                .catch(() => {
+                    document.getElementById('etiquetasBody').innerHTML =
+                        '<tr><td colspan="3" class="empty-msg" style="color:#c62828;">' +
+                        'Error al conectar con la API. \u00bfEst\u00e1 el servidor en marcha?</td></tr>';
+                });
+        }
+
+        // ─── Crear etiqueta ───
+        function handleSubmit() {
+            const nombre = document.getElementById('inputNombre').value.trim();
+
+            if (!nombre) {
+                showToast('El nombre es obligatorio', 'error');
+                document.getElementById('inputNombre').focus();
+                return;
+            }
+
+            const body = JSON.stringify({ nombre });
+            const headers = { 'Content-Type': 'application/json' };
+
+            logRequest('POST', API, body);
+
+            fetch(API, { method: 'POST', headers, body })
+                .then(response => {
+                    logResponse(response.status);
+                    if (!response.ok) throw new Error('Error ' + response.status);
+                    return response.json();
+                })
+                .then(() => {
+                    showToast('Etiqueta creada correctamente', 'success');
+                    document.getElementById('inputNombre').value = '';
+                    loadEtiquetas();
+                })
+                .catch(() => showToast('Error al crear la etiqueta', 'error'));
+        }
+
+        // ─── Eliminar etiqueta ───
+        function deleteEtiqueta(id, nombre) {
+            if (!confirm(`\u00bfEliminar la etiqueta "${nombre}" (#${id})?\n` +
+                'Se desvinculará de todas sus notas (las notas no se borran).')) return;
+
+            const url = `${API}/${id}`;
+            logRequest('DELETE', url);
+
+            fetch(url, { method: 'DELETE' })
+                .then(response => {
+                    logResponse(response.status);
+                    if (response.status === 204) {
+                        showToast('Etiqueta eliminada', 'success');
+                        loadEtiquetas();
+                    } else {
+                        throw new Error('Error ' + response.status);
+                    }
+                })
+                .catch(() => showToast('Error al eliminar la etiqueta', 'error'));
+        }
+
+        // ─── Panel didáctico: mostrar la petición HTTP en tiempo real ───
+        function logRequest(method, url, body) {
+            const log = document.getElementById('apiLog');
+            let html = `<span class="method method-${method}">${method}</span>`;
+            html += `<span class="url">${escapeHtml(url)}</span>`;
+            if (body) {
+                html += `<span class="url" style="color:#80cbc4;">&nbsp;&rarr;&nbsp;${escapeHtml(body)}</span>`;
+            }
+            html += `<span class="status">enviando...</span>`;
+            log.innerHTML = html;
+        }
+
+        function logResponse(status) {
+            const statusEl = document.querySelector('#apiLog .status');
+            if (statusEl) {
+                statusEl.textContent = `\u2190 ${status} ${httpStatusText(status)}`;
+            }
+        }
+
+        function httpStatusText(code) {
+            const texts = {
+                200: 'OK', 201: 'Created', 204: 'No Content',
+                404: 'Not Found', 500: 'Internal Server Error'
+            };
+            return texts[code] || '';
+        }
+
+        // ─── Toast de notificaciones ───
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast toast-${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // ─── Utilidades de escape ───
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+
+        function escapeJs(text) {
+            return String(text)
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/"/g, '\\"');
+        }
+    </script>
+</body>
+</html>
