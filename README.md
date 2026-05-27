@@ -1,207 +1,227 @@
-# UserApp — Spring Boot + JPA + H2
+# UserApp — Spring Boot + JPA + H2 `v1.5-spring-security`
 
-Proyecto de ejemplo para el alumnado de **1º DAM / DAW**.
-Una API REST con CRUD de usuarios y notas usando Spring Boot, JPA y una base de datos H2 en memoria.
-Incluye una relación `@ManyToOne` / `@OneToMany` entre `Nota` y `User` como ejemplo de relaciones JPA.
+> **Rama de seguridad** — Implementa autenticacion **HTTP Basic** con Spring Security.
+> Los GET son publicos. POST, PUT y DELETE requieren usuario y contrasena.
+>
+> Base: [`main` (v1.0)](../../tree/main) — ver que se anade en esta rama: `git diff main...v1.5-spring-security`
 
 ---
 
-## Requisitos previos
+## Seguridad — HTTP Basic Auth
 
-- **Java 17** o superior instalado
-- No necesitas instalar Maven (el proyecto incluye Maven Wrapper)
+### Modelo de acceso
 
-Comprueba tu version de Java:
+| Tipo de peticion | Acceso | Como autenticarse |
+|---|---|---|
+| `GET /api/v1/**` | Libre — sin credenciales | — |
+| `POST /api/v1/**` | Requiere autenticacion | Usuario + contrasena |
+| `PUT /api/v1/**` | Requiere autenticacion | Usuario + contrasena |
+| `DELETE /api/v1/**` | Requiere autenticacion | Usuario + contrasena |
+| `/h2-console/**` | Libre | — |
+| `/*.html`, `/actuator/**` | Libre | — |
+
+### Credenciales configuradas
+
+| Campo | Valor |
+|---|---|
+| Usuario | `admin` |
+| Contrasena | `admin123` |
+
+> Las credenciales estan en memoria (clase `SecurityConfig`). En una aplicacion real vendrian de la base de datos.
+
+### Como autenticarse
+
+**Con curl:**
 
 ```bash
-java -version
+# -u usuario:contrasena — curl codifica las credenciales en Base64 automaticamente
+curl -X POST http://localhost:8080/api/v1/users \
+  -H "Content-Type: application/json" \
+  -u admin:admin123 \
+  -d '{"nombre": "Ana Garcia", "email": "ana@ejemplo.com"}'
 ```
+
+**Con Postman:**
+
+1. Abre la peticion POST/PUT/DELETE
+2. Pestaña **Authorization**
+3. Type → **Basic Auth**
+4. Username: `admin` / Password: `admin123`
+5. Enviar
+
+**Como funciona por debajo:**
+
+HTTP Basic codifica `usuario:contrasena` en Base64 y lo envía en la cabecera:
+
+```
+Authorization: Basic YWRtaW46YWRtaW4xMjM=
+```
+
+El navegador (o Postman) hace esta codificacion automaticamente. El servidor la decodifica y verifica contra los usuarios registrados.
+
+### Que pasa sin credenciales
+
+```bash
+# Sin -u → 401 Unauthorized
+curl -X POST http://localhost:8080/api/v1/users \
+  -H "Content-Type: application/json" \
+  -d '{"nombre": "Test"}'
+# → HTTP 401 Unauthorized
+```
+
+### Que pasa con credenciales incorrectas
+
+```bash
+curl -X POST http://localhost:8080/api/v1/users \
+  -H "Content-Type: application/json" \
+  -u admin:contrasenaIncorrecta \
+  -d '{"nombre": "Test"}'
+# → HTTP 401 Unauthorized
+```
+
+---
+
+## Que se anade respecto a v1.0
+
+Esta rama anade **exactamente un fichero** sobre el codigo base de v1.0:
+
+```
+src/main/java/com/damw/userapp/
+└── security/
+    └── SecurityConfig.java   ← NUEVO — configuracion de Spring Security
+```
+
+Y una dependencia en `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+```
+
+Para ver el diff completo:
+
+```bash
+git diff main...v1.5-spring-security
+```
+
+### Por que solo un fichero
+
+Spring Security se activa automaticamente al anadir la dependencia. Solo necesitamos `SecurityConfig.java` para:
+- Definir que rutas son publicas y cuales requieren autenticacion
+- Crear el usuario en memoria (`admin / admin123`)
+- Configurar el mecanismo de autenticacion (HTTP Basic)
+
+El resto del codigo (controladores, servicios, repositorios) **no se toca**. La seguridad se anade por encima, no dentro.
 
 ---
 
 ## Arrancar el servidor
-
-### macOS / Linux
-
-```bash
-./iniciar.sh
-```
-
-### Windows
-
-Haz doble clic en `iniciar.bat`, o desde la terminal:
-
-```cmd
-iniciar.bat
-```
-
-### Alternativa manual
 
 ```bash
 ./mvnw spring-boot:run        # macOS / Linux
 mvnw.cmd spring-boot:run      # Windows
 ```
 
-Una vez arrancado, veras en la consola el mensaje `Started UserappApplication`.
-Abre el navegador en:
-
 > **http://localhost:8080**
-
-Para parar el servidor pulsa `Ctrl + C` en la terminal.
-
----
-
-## Que incluye la aplicacion
-
-| URL | Descripcion |
-|---|---|
-| `/` | Pagina de inicio con enlaces a todo |
-| `/users.html` | Interfaz web para gestionar usuarios (CRUD) |
-| `/notas.html` | Interfaz web para gestionar notas — muestra la relacion `@ManyToOne` en accion |
-| `/h2-info.html` | Instrucciones para la consola H2 |
-| `/h2-console` | Consola SQL de la base de datos H2 |
-| `/actuator-info.html` | Visualizacion de endpoints de Actuator |
-| `/health-info.html` | Health check en tiempo real |
 
 ---
 
 ## API REST — Endpoints
 
+La siguiente tabla incluye el requisito de autenticacion para cada endpoint.
+
 ### Usuarios — `/api/v1/users`
 
-| Metodo | URL | Descripcion | Respuesta |
+| Metodo | URL | Auth | Respuesta |
 |---|---|---|---|
-| `GET` | `/api/v1/users` | Listar todos los usuarios | `200 OK` |
-| `GET` | `/api/v1/users/{id}` | Obtener un usuario por ID | `200 OK` / `404 Not Found` |
-| `POST` | `/api/v1/users` | Crear un nuevo usuario | `201 Created` |
-| `PUT` | `/api/v1/users/{id}` | Actualizar un usuario | `200 OK` / `404 Not Found` |
-| `DELETE` | `/api/v1/users/{id}` | Eliminar un usuario | `204 No Content` / `404 Not Found` |
+| `GET` | `/api/v1/users` | No | `200 OK` |
+| `GET` | `/api/v1/users/{id}` | No | `200` / `404` |
+| `GET` | `/api/v1/users/buscar?email=` | No | `200` / `404` |
+| `POST` | `/api/v1/users` | **Si** — `admin:admin123` | `201 Created` |
+| `PUT` | `/api/v1/users/{id}` | **Si** — `admin:admin123` | `200` / `404` |
+| `DELETE` | `/api/v1/users/{id}` | **Si** — `admin:admin123` | `204` / `404` |
 
 ### Notas — `/api/v1/notas`
 
-| Metodo | URL | Descripcion | Respuesta |
+| Metodo | URL | Auth | Respuesta |
 |---|---|---|---|
-| `GET` | `/api/v1/notas` | Listar todas las notas | `200 OK` |
-| `GET` | `/api/v1/notas/{id}` | Obtener una nota por ID | `200 OK` / `404 Not Found` |
-| `GET` | `/api/v1/notas/usuario/{id}` | Notas de un usuario concreto | `200 OK` |
-| `POST` | `/api/v1/notas` | Crear una nueva nota | `201 Created` |
-| `PUT` | `/api/v1/notas/{id}` | Actualizar una nota | `200 OK` / `404 Not Found` |
-| `DELETE` | `/api/v1/notas/{id}` | Eliminar una nota | `204 No Content` / `404 Not Found` |
+| `GET` | `/api/v1/notas` | No | `200 OK` |
+| `GET` | `/api/v1/notas/{id}` | No | `200` / `404` |
+| `GET` | `/api/v1/notas/usuario/{id}` | No | `200 OK` |
+| `GET` | `/api/v1/notas/buscar?titulo=&usuarioId=&sortBy=&order=` | No | `200 OK` |
+| `GET` | `/api/v1/notas/buscar-usuario?nombre=` | No | `200 OK` |
+| `GET` | `/api/v1/notas/count/usuario/{id}` | No | `200 OK` |
+| `POST` | `/api/v1/notas` | **Si** | `201 Created` |
+| `PUT` | `/api/v1/notas/{id}` | **Si** | `200` / `404` |
+| `DELETE` | `/api/v1/notas/{id}` | **Si** | `204` / `404` |
 
-### Ejemplos con curl
+### Etiquetas — `/api/v1/etiquetas`
+
+| Metodo | URL | Auth | Respuesta |
+|---|---|---|---|
+| `GET` | `/api/v1/etiquetas` | No | `200 OK` |
+| `GET` | `/api/v1/etiquetas/{id}` | No | `200` / `404` |
+| `GET` | `/api/v1/etiquetas/buscar?nombre=` | No | `200` / `404` |
+| `POST` | `/api/v1/etiquetas` | **Si** | `201 Created` |
+| `DELETE` | `/api/v1/etiquetas/{id}` | **Si** | `204` / `404` |
+
+---
+
+## Ejemplos con curl — flujo completo
 
 ```bash
-# Crear un usuario
+# 1. Consultar (GET — sin credenciales)
+curl http://localhost:8080/api/v1/users
+
+# 2. Crear usuario (POST — con credenciales)
 curl -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
+  -u admin:admin123 \
   -d '{"nombre": "Ana Garcia", "email": "ana@ejemplo.com"}'
 
-# Crear una nota asignada al usuario con id=1
+# 3. Crear nota para el usuario id=1 (POST — con credenciales)
 curl -X POST http://localhost:8080/api/v1/notas \
   -H "Content-Type: application/json" \
-  -d '{"titulo": "Mi primera nota", "contenido": "Texto de ejemplo", "usuario": {"id": 1}}'
+  -u admin:admin123 \
+  -d '{"titulo": "Apuntes JPA", "contenido": "...", "usuario": {"id": 1}}'
 
-# Ver solo las notas del usuario 1
-curl http://localhost:8080/api/v1/notas/usuario/1
+# 4. Actualizar usuario (PUT — con credenciales)
+curl -X PUT http://localhost:8080/api/v1/users/1 \
+  -H "Content-Type: application/json" \
+  -u admin:admin123 \
+  -d '{"nombre": "Ana Garcia Lopez", "email": "ana@ejemplo.com"}'
+
+# 5. Eliminar nota (DELETE — con credenciales)
+curl -X DELETE http://localhost:8080/api/v1/notas/1 \
+  -u admin:admin123
 ```
 
 ---
 
-## Estructura del proyecto
+## Consola H2
 
-```
-src/main/java/com/damw/userapp/
-├── controller/
-│   ├── UserController.java   ← Endpoints HTTP de usuarios
-│   └── NotaController.java   ← Endpoints HTTP de notas
-├── service/
-│   ├── UserService.java      ← Logica de negocio de usuarios
-│   └── NotaService.java      ← Logica de negocio de notas
-├── repository/
-│   ├── UserRepository.java   ← JpaRepository<User, Long>
-│   └── NotaRepository.java   ← JpaRepository<Nota, Long> + findByUsuarioId
-├── model/
-│   ├── User.java             ← Entidad JPA — tabla USERS (@OneToMany → Nota)
-│   └── Nota.java             ← Entidad JPA — tabla NOTAS (@ManyToOne → User)
-└── UserappApplication.java
-
-src/main/resources/
-├── static/
-│   ├── index.html            ← Pagina de inicio
-│   ├── users.html            ← CRUD de usuarios
-│   └── notas.html            ← CRUD de notas con filtro por usuario
-└── application.properties
-```
-
-### Arquitectura por capas
-
-```
-Controller  →  Service  →  Repository  →  H2 Database
-  (HTTP)       (logica)     (JPA/SQL)      (en memoria)
-```
-
-Cada capa tiene una unica responsabilidad. El Controller nunca accede directamente al Repository.
-
----
-
-## Stack tecnico
-
-| Tecnologia | Detalle |
-|---|---|
-| Java | 17 |
-| Spring Boot | 4.0.5 |
-| Base de datos | H2 en memoria (`jdbc:h2:mem:userappdb`) |
-| ORM | Spring Data JPA / Hibernate |
-| Lombok | Reduce codigo repetitivo (getters, setters, etc.) |
-| Actuator | Monitorizacion (health, info, metrics) |
-| Build | Maven (via Maven Wrapper) |
-
----
-
-## Conexion a la consola H2
-
-Desde la pagina `/h2-info.html` o directamente en `/h2-console`:
+Accesible **sin autenticacion** en `/h2-console`:
 
 | Campo | Valor |
 |---|---|
 | JDBC URL | `jdbc:h2:mem:userappdb` |
 | User | `sa` |
-| Password | *(vacio)* |
+| Password | *(dejar vacio)* |
 
-> La base de datos es **en memoria**: los datos se pierden al parar el servidor.
-
----
-
-## Relacion JPA — @ManyToOne / @OneToMany
-
-Una `Nota` pertenece a un `User`. Esto se modela con:
-
-```
-USERS                    NOTAS
-┌────────────────┐       ┌──────────────────────────┐
-│ id  (PK)       │◄──┐   │ id         (PK)           │
-│ nombre         │   └───│ usuario_id (FK → USERS.id)│
-│ email          │       │ titulo                    │
-└────────────────┘       │ contenido                 │
-                         └──────────────────────────┘
-```
-
-En Java, la relacion se declara con dos anotaciones:
-
-- `@ManyToOne` en `Nota.usuario` — crea la columna FK `usuario_id` en la tabla NOTAS
-- `@OneToMany(mappedBy="usuario")` en `User.notas` — relacion inversa, sin FK adicional
-- `@JsonIgnore` en `User.notas` — evita recursion infinita al serializar a JSON
-- `@ToString.Exclude` en `User.notas` — evita recursion en el `toString()` que genera Lombok
+> Spring Security esta configurado para permitir `/h2-console/**` sin credenciales.
+> Ademas, `frameOptions sameOrigin` permite que el iframe de la consola H2 funcione correctamente.
 
 ---
 
-## Objetivo pedagogico
+## Comparativa con las otras ramas de seguridad
 
-Este proyecto demuestra que:
-
-1. **JPA abstrae la base de datos** — el codigo Java no cambia entre H2 y MySQL
-2. **Las relaciones JPA** (`@ManyToOne` / `@OneToMany`) se traducen directamente a claves foraneas en SQL
-3. **La arquitectura por capas** tiene sentido practico, no es solo teoria
-4. **Spring Boot** reduce enormemente el codigo necesario para una API funcional
-
-Cuando se migre a MySQL, solo cambiara `application.properties`. El resto del codigo Java permanece intacto.
+| | `v1.5-spring-security` | `v1.5-api-key` | `v1.5-jwt` |
+|---|---|---|---|
+| Mecanismo | HTTP Basic | Filtro personalizado | JSON Web Token |
+| Credencial | Usuario + contrasena | Clave en cabecera | Token obtenido en login |
+| Cabecera | `Authorization: Basic ...` | `X-API-KEY: ...` | `Authorization: Bearer ...` |
+| Estado (sesion) | Con sesion (por defecto) | Sin estado | Sin estado (STATELESS) |
+| Nuevas clases | 1 (`SecurityConfig`) | 1 (`ApiKeyFilter`) | 4 (`JwtUtil`, `JwtFilter`, `SecurityConfig`, `AuthController`) |
+| Dependencias | `spring-boot-starter-security` | Ninguna | `spring-boot-starter-security` + JJWT |
