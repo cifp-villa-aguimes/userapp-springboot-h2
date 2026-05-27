@@ -59,6 +59,14 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+		<!-- Spring Security — autenticación y autorización HTTP -->
+		<!-- Al añadir esta dependencia, Spring Security se activa automáticamente -->
+		<!-- y por defecto bloquea TODAS las peticiones hasta que configuremos las reglas. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>
