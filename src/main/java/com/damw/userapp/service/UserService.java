@@ -24,9 +24,17 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    // Busca un usuario por su ID. Devuelve Optional para manejar el caso de "no encontrado"
+    // Devuelve Optional<User> porque el usuario con ese ID puede no existir en la BD.
+    // Si existe → Optional con el User dentro.
+    // Si no existe → Optional vacío.
+    // El controlador decide qué hacer con cada caso usando .map() y .orElse().
     public Optional<User> findById(Long id) {
         return userRepository.findById(id);
+    }
+
+    // Delega en el repositorio. Devuelve Optional<User> porque el email puede no existir.
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 
     // Guarda un nuevo usuario en la base de datos

@@ -4,6 +4,7 @@ import com.damw.userapp.model.Etiqueta;
 import com.damw.userapp.model.Nota;
 import com.damw.userapp.repository.EtiquetaRepository;
 import com.damw.userapp.repository.NotaRepository;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
@@ -35,7 +36,9 @@ public class NotaService {
         return notaRepository.findAll();
     }
 
-    // Busca una nota por su ID. Devuelve Optional para manejar el caso de "no encontrada"
+    // Devuelve Optional<Nota> porque la nota puede haber sido eliminada o nunca existir.
+    // No devuelve null — devuelve una "caja" que puede estar vacía.
+    // Esto obliga al controlador a manejar ambos casos explícitamente.
     public Optional<Nota> findById(Long id) {
         return notaRepository.findById(id);
     }
@@ -43,6 +46,21 @@ public class NotaService {
     // Devuelve todas las notas que pertenecen a un usuario concreto
     public List<Nota> findByUsuarioId(Long usuarioId) {
         return notaRepository.findByUsuarioId(usuarioId);
+    }
+
+    // Búsqueda flexible con parámetros opcionales.
+    // Si titulo llega null (no se envió en la URL) → usamos cadena vacía,
+    //   lo que equivale a LIKE '%%' → devuelve todas las notas.
+    // Si usuarioId llega null (no se envió) → buscamos solo por título sin filtro de usuario.
+    // El objeto Sort viene ya construido desde el controlador con el campo y la dirección.
+    public List<Nota> buscar(String titulo, Long usuarioId, Sort sort) {
+        String t = (titulo == null ? "" : titulo);
+        if (usuarioId != null) {
+            // Filtra por título Y por usuario
+            return notaRepository.findByTituloContainingIgnoreCaseAndUsuarioId(t, usuarioId, sort);
+        }
+        // Filtra solo por título (devuelve notas de todos los usuarios, con ordenación)
+        return notaRepository.findByTituloContainingIgnoreCase(t, sort);
     }
 
     // Guarda una nueva nota en la base de datos.
@@ -71,6 +89,18 @@ public class NotaService {
                     notaExistente.setEtiquetas(resolverEtiquetas(datosActualizados.getEtiquetas()));
                     return notaRepository.save(notaExistente);
                 });
+    }
+
+    // Devuelve el número total de notas de un usuario.
+    // Delega en la consulta @Query del repositorio — COUNT(n) devuelve Long.
+    public Long contarNotasPorUsuario(Long usuarioId) {
+        return notaRepository.contarNotasPorUsuario(usuarioId);
+    }
+
+    // Busca notas cuyo usuario tenga ese texto en su nombre (búsqueda parcial).
+    // JPQL con LIKE %:nombre% — Hibernate genera el JOIN automáticamente.
+    public List<Nota> buscarPorNombreUsuario(String nombre) {
+        return notaRepository.findByNombreUsuario(nombre);
     }
 
     // Elimina una nota por su ID. Devuelve true si existía, false si no

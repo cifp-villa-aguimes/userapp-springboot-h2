@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -34,9 +35,34 @@ public class UserController {
         return ResponseEntity.ok(usuarios);
     }
 
+    // GET /api/v1/users/buscar?email=ana@email.com
+    // Busca un usuario por email exacto.
+    // Devuelve 200 OK con el usuario si existe, o 404 Not Found si no.
+    //
+    // @RequestParam sin required=false → el parámetro es obligatorio.
+    // Si no se envía ?email=..., Spring devuelve automáticamente 400 Bad Request.
+    //
+    // IMPORTANTE: va ANTES de /{id} para que Spring no intente parsear "buscar" como Long.
+    @GetMapping("/buscar")
+    public ResponseEntity<User> buscarPorEmail(@RequestParam String email) {
+        // findByEmail devuelve Optional<User>:
+        //   - Optional con valor → el email existe en la BD
+        //   - Optional vacío     → no hay ningún usuario con ese email
+        //
+        // .map(ResponseEntity::ok)                   → si tiene valor: envuelve el User en 200 OK
+        // .orElse(notFound().build())                → si está vacío: devuelve 404 Not Found
+        return userService.findByEmail(email)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     // GET /api/v1/users/{id} → busca un usuario por ID, devuelve 404 si no existe
     @GetMapping("/{id}")
     public ResponseEntity<User> getById(@PathVariable Long id) {
+        // El servicio devuelve Optional<User>. Lo procesamos con dos pasos:
+        // .map(ResponseEntity::ok)                   → si tiene valor: crea 200 OK con el objeto
+        // .orElse(ResponseEntity.notFound().build()) → si está vacío: devuelve 404
+        // Nunca llamamos a .get() directamente — lanzaría excepción si el Optional está vacío.
         return userService.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

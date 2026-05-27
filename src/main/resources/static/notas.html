@@ -361,6 +361,36 @@
             </div>
         </div>
 
+        <!-- Panel de búsqueda — @RequestParam combinados en GET /api/v1/notas/buscar -->
+        <div class="filter-section" style="flex-direction:column;align-items:stretch;gap:12px;">
+            <strong style="font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#1a237e;">
+                &#128269; Buscar notas
+            </strong>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+                <input type="text" id="buscarTitulo" placeholder="T&iacute;tulo contiene..."
+                    style="flex:2;min-width:140px;padding:10px 14px;border:2px solid #c5cae9;border-radius:8px;font-size:14px;font-family:inherit;transition:border-color .2s;"
+                    onfocus="this.style.borderColor='#1a237e'" onblur="this.style.borderColor='#c5cae9'">
+                <select id="buscarUsuario"
+                    style="flex:1;min-width:160px;padding:10px 14px;border:2px solid #c5cae9;border-radius:8px;font-size:14px;font-family:inherit;background:white;cursor:pointer;">
+                    <option value="">Todos los usuarios</option>
+                </select>
+                <select id="buscarSortBy"
+                    style="padding:10px 14px;border:2px solid #c5cae9;border-radius:8px;font-size:14px;font-family:inherit;background:white;cursor:pointer;">
+                    <option value="id">Ordenar: ID</option>
+                    <option value="titulo">Ordenar: T&iacute;tulo</option>
+                </select>
+                <select id="buscarOrder"
+                    style="padding:10px 14px;border:2px solid #c5cae9;border-radius:8px;font-size:14px;font-family:inherit;background:white;cursor:pointer;">
+                    <option value="asc">Ascendente</option>
+                    <option value="desc">Descendente</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-create" onclick="buscarNotas()">Buscar</button>
+                <button class="btn btn-cancel" onclick="limpiarBusqueda()">Limpiar</button>
+            </div>
+        </div>
+
         <!-- Tabla de notas -->
         <div class="table-section">
             <h2>Notas en la base de datos H2</h2>
@@ -454,6 +484,20 @@
                         selectFiltro.appendChild(opt);
                     });
                     if (filtroVal) selectFiltro.value = filtroVal;
+
+                    // Poblar el select del panel de búsqueda
+                    const selectBuscar = document.getElementById('buscarUsuario');
+                    if (selectBuscar) {
+                        const buscarVal = selectBuscar.value;
+                        selectBuscar.innerHTML = '<option value="">Todos los usuarios</option>';
+                        users.forEach(u => {
+                            const opt = document.createElement('option');
+                            opt.value = u.id;
+                            opt.textContent = `#${u.id} — ${u.nombre}`;
+                            selectBuscar.appendChild(opt);
+                        });
+                        if (buscarVal) selectBuscar.value = buscarVal;
+                    }
                 })
                 .catch(() => {
                     // Si no hay usuarios disponibles seguimos funcionando
@@ -747,6 +791,52 @@
             const div = document.createElement('div');
             div.textContent = String(text);
             return div.innerHTML;
+        }
+
+        // ─── Buscar notas con @RequestParam combinados ───
+        // Construye la URL solo con los params que tienen valor.
+        // sortBy y order siempre se envían (tienen valor por defecto en los selects).
+        function buscarNotas() {
+            const titulo = document.getElementById('buscarTitulo').value.trim();
+            const usuarioId = document.getElementById('buscarUsuario').value;
+            const sortBy = document.getElementById('buscarSortBy').value;
+            const order = document.getElementById('buscarOrder').value;
+
+            const params = new URLSearchParams();
+            if (titulo) params.append('titulo', titulo);
+            if (usuarioId) params.append('usuarioId', usuarioId);
+            params.append('sortBy', sortBy);
+            params.append('order', order);
+
+            const url = `${API_NOTAS}/buscar?${params.toString()}`;
+            logRequest('GET', url);
+
+            fetch(url)
+                .then(response => {
+                    logResponse(response.status);
+                    return response.json();
+                })
+                .then(notas => {
+                    if (notas.length === 0) {
+                        document.getElementById('notasBody').innerHTML =
+                            '<tr><td colspan="6" class="empty-msg">No se encontraron notas con esos filtros.</td></tr>';
+                        return;
+                    }
+                    renderNotas(notas);
+                })
+                .catch(() => {
+                    document.getElementById('notasBody').innerHTML =
+                        '<tr><td colspan="6" class="empty-msg" style="color:#c62828;">Error al conectar con la API.</td></tr>';
+                });
+        }
+
+        // ─── Limpiar panel de búsqueda y recargar todos los datos ───
+        function limpiarBusqueda() {
+            document.getElementById('buscarTitulo').value = '';
+            document.getElementById('buscarUsuario').value = '';
+            document.getElementById('buscarSortBy').value = 'id';
+            document.getElementById('buscarOrder').value = 'asc';
+            loadNotas();
         }
     </script>
 </body>

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -33,9 +34,31 @@ public class EtiquetaController {
         return ResponseEntity.ok(etiquetas);
     }
 
+    // GET /api/v1/etiquetas/buscar?nombre=JPA
+    // Busca una etiqueta por nombre exacto.
+    // Devuelve 200 OK con la etiqueta si existe, o 404 Not Found si no.
+    //
+    // IMPORTANTE: va ANTES de /{id} para que Spring no intente parsear "buscar" como Long.
+    @GetMapping("/buscar")
+    public ResponseEntity<Etiqueta> buscarPorNombre(@RequestParam String nombre) {
+        // findByNombre devuelve Optional<Etiqueta>:
+        //   - Optional con valor → existe una etiqueta con ese nombre
+        //   - Optional vacío     → ninguna etiqueta tiene ese nombre
+        //
+        // El patrón .map().orElse() es el estándar en Spring Boot para
+        // convertir un Optional en una respuesta HTTP con el código correcto.
+        return etiquetaService.findByNombre(nombre)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     // GET /api/v1/etiquetas/{id} → busca una etiqueta por ID, devuelve 404 si no existe
     @GetMapping("/{id}")
     public ResponseEntity<Etiqueta> getById(@PathVariable Long id) {
+        // El servicio devuelve Optional<Etiqueta>. Lo procesamos con dos pasos:
+        // .map(ResponseEntity::ok)                   → si tiene valor: crea 200 OK con el objeto
+        // .orElse(ResponseEntity.notFound().build()) → si está vacío: devuelve 404
+        // Nunca llamamos a .get() directamente — lanzaría excepción si el Optional está vacío.
         return etiquetaService.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

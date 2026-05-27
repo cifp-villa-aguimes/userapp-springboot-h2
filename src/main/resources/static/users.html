@@ -266,6 +266,18 @@
             </div>
         </div>
 
+        <!-- Buscar usuario por email — GET /api/v1/users/buscar?email=... -->
+        <div class="form-section" style="margin-bottom: 16px;">
+            <h2>&#128269; Buscar por email</h2>
+            <div class="form-row">
+                <input type="email" id="searchEmail" placeholder="ana@email.com">
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-create" onclick="buscarPorEmail()">Buscar</button>
+            </div>
+            <div id="searchResult" style="margin-top: 12px; display: none;"></div>
+        </div>
+
         <!-- Tabla de usuarios -->
         <div class="table-section">
             <h2>Usuarios en la base de datos H2</h2>
@@ -313,7 +325,16 @@
         let editingId = null;
 
         // ─── Cargar usuarios al abrir la pagina ───
-        document.addEventListener('DOMContentLoaded', loadUsers);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUsers();
+            document.getElementById('searchEmail').addEventListener('input', () => {
+                if (!document.getElementById('searchEmail').value) {
+                    const r = document.getElementById('searchResult');
+                    r.style.display = 'none';
+                    r.innerHTML = '';
+                }
+            });
+        });
 
         // ─── Funcion principal: listar todos los usuarios ───
         function loadUsers() {
@@ -497,6 +518,48 @@
 
         function escapeJs(text) {
             return text.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+
+        // ─── Buscar usuario por email — @RequestParam en acción ───
+        function buscarPorEmail() {
+            const email = document.getElementById('searchEmail').value.trim();
+            const resultDiv = document.getElementById('searchResult');
+
+            if (!email) {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '<p style="color:#e65100;font-size:13px;padding:8px 12px;background:#fff3e0;border-radius:6px;">Introduce un email para buscar.</p>';
+                return;
+            }
+
+            const url = `${API}/buscar?email=${encodeURIComponent(email)}`;
+            logRequest('GET', url);
+
+            fetch(url)
+                .then(response => {
+                    logResponse(response.status);
+                    if (response.status === 404) {
+                        resultDiv.style.display = 'block';
+                        resultDiv.innerHTML = '<p style="color:#c62828;font-size:13px;padding:8px 12px;background:#ffebee;border-radius:6px;">No se encontr&oacute; ning&uacute;n usuario con ese email.</p>';
+                        return null;
+                    }
+                    if (!response.ok) throw new Error();
+                    return response.json();
+                })
+                .then(user => {
+                    if (!user) return;
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = `
+                        <div style="background:#f1f8e9;border:1px solid #c8e6c9;border-radius:8px;padding:14px;font-size:14px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+                            <span><strong>Usuario encontrado:</strong></span>
+                            <span>ID: <strong>${user.id}</strong></span>
+                            <span>Nombre: <strong>${escapeHtml(user.nombre)}</strong></span>
+                            <span>Email: <strong>${escapeHtml(user.email)}</strong></span>
+                        </div>`;
+                })
+                .catch(() => {
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = '<p style="color:#c62828;font-size:13px;">Error al conectar con la API.</p>';
+                });
         }
     </script>
 </body>
