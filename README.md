@@ -1,67 +1,147 @@
-# UserApp — Spring Boot + JPA + H2
+# UserApp — Spring Boot + JPA + H2 `v1.5-api-key`
 
-Proyecto de ejemplo para el alumnado de **1º DAM / DAW**.
-Una API REST con CRUD de usuarios y notas usando Spring Boot, JPA y una base de datos H2 en memoria.
-Incluye una relación `@ManyToOne` / `@OneToMany` entre `Nota` y `User` como ejemplo de relaciones JPA.
+> **Rama de seguridad** — Implementa un **filtro API Key personalizado** sin Spring Security.
+> Los GET son publicos. POST, PUT y DELETE requieren la cabecera `X-API-KEY`.
+>
+> Base: [`main` (v1.0)](../../tree/main) — ver que se anade en esta rama: `git diff main...v1.5-api-key`
 
 ---
 
-## Requisitos previos
+## Seguridad — Filtro API Key
 
-- **Java 17** o superior instalado
-- No necesitas instalar Maven (el proyecto incluye Maven Wrapper)
+### Modelo de acceso
 
-Comprueba tu version de Java:
+| Tipo de peticion | Acceso | Como autenticarse |
+|---|---|---|
+| `GET /api/v1/**` | Libre — sin cabecera | — |
+| `POST /api/v1/**` | Requiere API Key | Cabecera `X-API-KEY` |
+| `PUT /api/v1/**` | Requiere API Key | Cabecera `X-API-KEY` |
+| `DELETE /api/v1/**` | Requiere API Key | Cabecera `X-API-KEY` |
+| `/h2-console/**` | Libre (excluido del filtro) | — |
+
+### Clave configurada
+
+| Campo | Valor |
+|---|---|
+| Propiedad | `app.api-key` en `application.properties` |
+| Valor actual | `userapp-api-key-2026` |
+| Cabecera HTTP | `X-API-KEY` |
+
+> En produccion la clave debe venir de una variable de entorno, no del fichero de configuracion.
+
+### Como autenticarse
+
+**Con curl:**
 
 ```bash
-java -version
+# -H "X-API-KEY: ..." — anadir la cabecera con la clave
+curl -X POST http://localhost:8080/api/v1/users \
+  -H "Content-Type: application/json" \
+  -H "X-API-KEY: userapp-api-key-2026" \
+  -d '{"nombre": "Ana Garcia", "email": "ana@ejemplo.com"}'
+```
+
+**Con Postman:**
+
+1. Abre la peticion POST/PUT/DELETE
+2. Pestaña **Headers**
+3. Añadir clave: `X-API-KEY` / valor: `userapp-api-key-2026`
+4. Enviar
+
+### Que pasa sin la cabecera
+
+```bash
+# Sin X-API-KEY → 401 Unauthorized con mensaje explicativo
+curl -X POST http://localhost:8080/api/v1/users \
+  -H "Content-Type: application/json" \
+  -d '{"nombre": "Test"}'
+# → HTTP 401 Unauthorized
+# → "API Key requerida. Añade la cabecera X-API-KEY a tu peticion."
+```
+
+### Que pasa con clave incorrecta
+
+```bash
+curl -X POST http://localhost:8080/api/v1/users \
+  -H "Content-Type: application/json" \
+  -H "X-API-KEY: claveEquivocada" \
+  -d '{"nombre": "Test"}'
+# → HTTP 401 Unauthorized
+```
+
+---
+
+## Que se anade respecto a v1.0
+
+Esta rama anade **exactamente un fichero** sobre el codigo base de v1.0:
+
+```
+src/main/java/com/damw/userapp/
+└── security/
+    └── ApiKeyFilter.java   ← NUEVO — filtro servlet personalizado
+```
+
+Y una linea en `application.properties`:
+
+```properties
+app.api-key=userapp-api-key-2026
+```
+
+**No se anade ninguna dependencia nueva** en `pom.xml`. El filtro usa unicamente las clases de Jakarta Servlet, que ya vienen incluidas en `spring-boot-starter-webmvc`.
+
+Para ver el diff completo:
+
+```bash
+git diff main...v1.5-api-key
+```
+
+### Por que un filtro propio y no Spring Security
+
+Esta rama demuestra que se puede proteger una API **sin necesidad de un framework de seguridad completo**. Un `OncePerRequestFilter` de Spring Web es suficiente para:
+
+- Interceptar todas las peticiones HTTP
+- Leer una cabecera personalizada
+- Comparar su valor con la clave configurada
+- Rechazar con 401 si no coincide
+
+Es un patron muy comun en microservicios internos o APIs con autenticacion simple entre sistemas.
+
+### Como funciona ApiKeyFilter
+
+```
+Peticion HTTP entrante
+        │
+        ▼
+┌────────────────────────────────────────┐
+│ ApiKeyFilter.shouldNotFilter()         │
+│ ¿La URL empieza por /h2-console?       │◄─── Si → no aplica el filtro
+└────────────────────────────────────────┘
+        │ No
+        ▼
+┌────────────────────────────────────────┐
+│ ¿Es POST, PUT o DELETE?                │◄─── No (es GET) → dejar pasar
+└────────────────────────────────────────┘
+        │ Si
+        ▼
+┌────────────────────────────────────────┐
+│ ¿Viene la cabecera X-API-KEY?          │◄─── No → 401 Unauthorized
+│ ¿Coincide con app.api-key?             │◄─── No → 401 Unauthorized
+└────────────────────────────────────────┘
+        │ Si
+        ▼
+    Controlador
 ```
 
 ---
 
 ## Arrancar el servidor
 
-### macOS / Linux
-
-```bash
-./iniciar.sh
-```
-
-### Windows
-
-Haz doble clic en `iniciar.bat`, o desde la terminal:
-
-```cmd
-iniciar.bat
-```
-
-### Alternativa manual
-
 ```bash
 ./mvnw spring-boot:run        # macOS / Linux
 mvnw.cmd spring-boot:run      # Windows
 ```
 
-Una vez arrancado, veras en la consola el mensaje `Started UserappApplication`.
-Abre el navegador en:
-
 > **http://localhost:8080**
-
-Para parar el servidor pulsa `Ctrl + C` en la terminal.
-
----
-
-## Que incluye la aplicacion
-
-| URL | Descripcion |
-|---|---|
-| `/` | Pagina de inicio con enlaces a todo |
-| `/users.html` | Interfaz web para gestionar usuarios (CRUD) |
-| `/notas.html` | Interfaz web para gestionar notas — muestra la relacion `@ManyToOne` en accion |
-| `/h2-info.html` | Instrucciones para la consola H2 |
-| `/h2-console` | Consola SQL de la base de datos H2 |
-| `/actuator-info.html` | Visualizacion de endpoints de Actuator |
-| `/health-info.html` | Health check en tiempo real |
 
 ---
 
@@ -69,139 +149,93 @@ Para parar el servidor pulsa `Ctrl + C` en la terminal.
 
 ### Usuarios — `/api/v1/users`
 
-| Metodo | URL | Descripcion | Respuesta |
+| Metodo | URL | API Key | Respuesta |
 |---|---|---|---|
-| `GET` | `/api/v1/users` | Listar todos los usuarios | `200 OK` |
-| `GET` | `/api/v1/users/{id}` | Obtener un usuario por ID | `200 OK` / `404 Not Found` |
-| `POST` | `/api/v1/users` | Crear un nuevo usuario | `201 Created` |
-| `PUT` | `/api/v1/users/{id}` | Actualizar un usuario | `200 OK` / `404 Not Found` |
-| `DELETE` | `/api/v1/users/{id}` | Eliminar un usuario | `204 No Content` / `404 Not Found` |
+| `GET` | `/api/v1/users` | No | `200 OK` |
+| `GET` | `/api/v1/users/{id}` | No | `200` / `404` |
+| `GET` | `/api/v1/users/buscar?email=` | No | `200` / `404` |
+| `POST` | `/api/v1/users` | **Si** — `X-API-KEY: userapp-api-key-2026` | `201 Created` |
+| `PUT` | `/api/v1/users/{id}` | **Si** | `200` / `404` |
+| `DELETE` | `/api/v1/users/{id}` | **Si** | `204` / `404` |
 
 ### Notas — `/api/v1/notas`
 
-| Metodo | URL | Descripcion | Respuesta |
+| Metodo | URL | API Key | Respuesta |
 |---|---|---|---|
-| `GET` | `/api/v1/notas` | Listar todas las notas | `200 OK` |
-| `GET` | `/api/v1/notas/{id}` | Obtener una nota por ID | `200 OK` / `404 Not Found` |
-| `GET` | `/api/v1/notas/usuario/{id}` | Notas de un usuario concreto | `200 OK` |
-| `POST` | `/api/v1/notas` | Crear una nueva nota | `201 Created` |
-| `PUT` | `/api/v1/notas/{id}` | Actualizar una nota | `200 OK` / `404 Not Found` |
-| `DELETE` | `/api/v1/notas/{id}` | Eliminar una nota | `204 No Content` / `404 Not Found` |
+| `GET` | `/api/v1/notas` | No | `200 OK` |
+| `GET` | `/api/v1/notas/{id}` | No | `200` / `404` |
+| `GET` | `/api/v1/notas/usuario/{id}` | No | `200 OK` |
+| `GET` | `/api/v1/notas/buscar?titulo=&usuarioId=&sortBy=&order=` | No | `200 OK` |
+| `GET` | `/api/v1/notas/buscar-usuario?nombre=` | No | `200 OK` |
+| `GET` | `/api/v1/notas/count/usuario/{id}` | No | `200 OK` |
+| `POST` | `/api/v1/notas` | **Si** | `201 Created` |
+| `PUT` | `/api/v1/notas/{id}` | **Si** | `200` / `404` |
+| `DELETE` | `/api/v1/notas/{id}` | **Si** | `204` / `404` |
 
-### Ejemplos con curl
+### Etiquetas — `/api/v1/etiquetas`
+
+| Metodo | URL | API Key | Respuesta |
+|---|---|---|---|
+| `GET` | `/api/v1/etiquetas` | No | `200 OK` |
+| `GET` | `/api/v1/etiquetas/{id}` | No | `200` / `404` |
+| `GET` | `/api/v1/etiquetas/buscar?nombre=` | No | `200` / `404` |
+| `POST` | `/api/v1/etiquetas` | **Si** | `201 Created` |
+| `DELETE` | `/api/v1/etiquetas/{id}` | **Si** | `204` / `404` |
+
+---
+
+## Ejemplos con curl — flujo completo
 
 ```bash
-# Crear un usuario
+# 1. Consultar (GET — sin cabecera)
+curl http://localhost:8080/api/v1/users
+
+# 2. Crear usuario (POST — con X-API-KEY)
 curl -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
+  -H "X-API-KEY: userapp-api-key-2026" \
   -d '{"nombre": "Ana Garcia", "email": "ana@ejemplo.com"}'
 
-# Crear una nota asignada al usuario con id=1
+# 3. Crear nota (POST — con X-API-KEY)
 curl -X POST http://localhost:8080/api/v1/notas \
   -H "Content-Type: application/json" \
-  -d '{"titulo": "Mi primera nota", "contenido": "Texto de ejemplo", "usuario": {"id": 1}}'
+  -H "X-API-KEY: userapp-api-key-2026" \
+  -d '{"titulo": "Apuntes JPA", "contenido": "...", "usuario": {"id": 1}}'
 
-# Ver solo las notas del usuario 1
-curl http://localhost:8080/api/v1/notas/usuario/1
+# 4. Actualizar usuario (PUT — con X-API-KEY)
+curl -X PUT http://localhost:8080/api/v1/users/1 \
+  -H "Content-Type: application/json" \
+  -H "X-API-KEY: userapp-api-key-2026" \
+  -d '{"nombre": "Ana Garcia Lopez", "email": "ana@ejemplo.com"}'
+
+# 5. Eliminar nota (DELETE — con X-API-KEY)
+curl -X DELETE http://localhost:8080/api/v1/notas/1 \
+  -H "X-API-KEY: userapp-api-key-2026"
 ```
 
 ---
 
-## Estructura del proyecto
+## Consola H2
 
-```
-src/main/java/com/damw/userapp/
-├── controller/
-│   ├── UserController.java   ← Endpoints HTTP de usuarios
-│   └── NotaController.java   ← Endpoints HTTP de notas
-├── service/
-│   ├── UserService.java      ← Logica de negocio de usuarios
-│   └── NotaService.java      ← Logica de negocio de notas
-├── repository/
-│   ├── UserRepository.java   ← JpaRepository<User, Long>
-│   └── NotaRepository.java   ← JpaRepository<Nota, Long> + findByUsuarioId
-├── model/
-│   ├── User.java             ← Entidad JPA — tabla USERS (@OneToMany → Nota)
-│   └── Nota.java             ← Entidad JPA — tabla NOTAS (@ManyToOne → User)
-└── UserappApplication.java
+Accesible **sin API Key** en `/h2-console`.
 
-src/main/resources/
-├── static/
-│   ├── index.html            ← Pagina de inicio
-│   ├── users.html            ← CRUD de usuarios
-│   └── notas.html            ← CRUD de notas con filtro por usuario
-└── application.properties
-```
-
-### Arquitectura por capas
-
-```
-Controller  →  Service  →  Repository  →  H2 Database
-  (HTTP)       (logica)     (JPA/SQL)      (en memoria)
-```
-
-Cada capa tiene una unica responsabilidad. El Controller nunca accede directamente al Repository.
-
----
-
-## Stack tecnico
-
-| Tecnologia | Detalle |
-|---|---|
-| Java | 17 |
-| Spring Boot | 4.0.5 |
-| Base de datos | H2 en memoria (`jdbc:h2:mem:userappdb`) |
-| ORM | Spring Data JPA / Hibernate |
-| Lombok | Reduce codigo repetitivo (getters, setters, etc.) |
-| Actuator | Monitorizacion (health, info, metrics) |
-| Build | Maven (via Maven Wrapper) |
-
----
-
-## Conexion a la consola H2
-
-Desde la pagina `/h2-info.html` o directamente en `/h2-console`:
+El filtro tiene `shouldNotFilter()` configurado para excluir `/h2-console/**` porque la consola H2 usa peticiones POST internamente y quedaria bloqueada sin esta excepcion.
 
 | Campo | Valor |
 |---|---|
 | JDBC URL | `jdbc:h2:mem:userappdb` |
 | User | `sa` |
-| Password | *(vacio)* |
-
-> La base de datos es **en memoria**: los datos se pierden al parar el servidor.
+| Password | *(dejar vacio)* |
 
 ---
 
-## Relacion JPA — @ManyToOne / @OneToMany
+## Comparativa con las otras ramas de seguridad
 
-Una `Nota` pertenece a un `User`. Esto se modela con:
-
-```
-USERS                    NOTAS
-┌────────────────┐       ┌──────────────────────────┐
-│ id  (PK)       │◄──┐   │ id         (PK)           │
-│ nombre         │   └───│ usuario_id (FK → USERS.id)│
-│ email          │       │ titulo                    │
-└────────────────┘       │ contenido                 │
-                         └──────────────────────────┘
-```
-
-En Java, la relacion se declara con dos anotaciones:
-
-- `@ManyToOne` en `Nota.usuario` — crea la columna FK `usuario_id` en la tabla NOTAS
-- `@OneToMany(mappedBy="usuario")` en `User.notas` — relacion inversa, sin FK adicional
-- `@JsonIgnore` en `User.notas` — evita recursion infinita al serializar a JSON
-- `@ToString.Exclude` en `User.notas` — evita recursion en el `toString()` que genera Lombok
-
----
-
-## Objetivo pedagogico
-
-Este proyecto demuestra que:
-
-1. **JPA abstrae la base de datos** — el codigo Java no cambia entre H2 y MySQL
-2. **Las relaciones JPA** (`@ManyToOne` / `@OneToMany`) se traducen directamente a claves foraneas en SQL
-3. **La arquitectura por capas** tiene sentido practico, no es solo teoria
-4. **Spring Boot** reduce enormemente el codigo necesario para una API funcional
-
-Cuando se migre a MySQL, solo cambiara `application.properties`. El resto del codigo Java permanece intacto.
+| | `v1.5-spring-security` | `v1.5-api-key` | `v1.5-jwt` |
+|---|---|---|---|
+| Mecanismo | HTTP Basic | Filtro personalizado | JSON Web Token |
+| Credencial | Usuario + contrasena | Clave en cabecera | Token obtenido en login |
+| Cabecera | `Authorization: Basic ...` | `X-API-KEY: ...` | `Authorization: Bearer ...` |
+| Framework | Spring Security | Ninguno (servlet puro) | Spring Security + JJWT |
+| Nuevas clases | 1 (`SecurityConfig`) | 1 (`ApiKeyFilter`) | 4 clases |
+| Dependencias nuevas | `spring-boot-starter-security` | Ninguna | `spring-boot-starter-security` + JJWT |
