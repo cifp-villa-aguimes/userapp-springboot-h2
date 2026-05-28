@@ -2,6 +2,7 @@ package com.damw.userapp.controller;
 
 import com.damw.userapp.model.User;
 import com.damw.userapp.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -69,15 +70,23 @@ public class UserController {
     }
 
     // POST /api/v1/users → crea un nuevo usuario con los datos del body JSON
+    //
+    // @Valid activa la validación del objeto recibido en el body.
+    // Spring comprueba las anotaciones de User (@NotBlank, @Email) antes de llamar
+    // a este método. Si alguna falla → 400 Bad Request automático sin código extra.
+    //
+    // El mensaje de error que devuelve Spring es genérico (JSON extenso con detalles
+    // técnicos). En una app real se personaliza con @ControllerAdvice — tema de 2º.
     @PostMapping
-    public ResponseEntity<User> create(@RequestBody User user) {
+    public ResponseEntity<User> create(@Valid @RequestBody User user) {
         User guardado = userService.save(user);
         return ResponseEntity.status(201).body(guardado);
     }
 
     // PUT /api/v1/users/{id} → actualiza un usuario existente, devuelve 404 si no existe
+    // @Valid también aquí — al actualizar, los datos deben seguir siendo válidos
     @PutMapping("/{id}")
-    public ResponseEntity<User> update(@PathVariable Long id, @RequestBody User user) {
+    public ResponseEntity<User> update(@PathVariable Long id, @Valid @RequestBody User user) {
         return userService.update(id, user)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
